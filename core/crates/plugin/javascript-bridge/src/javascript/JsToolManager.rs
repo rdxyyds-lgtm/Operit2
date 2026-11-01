@@ -31,10 +31,13 @@ struct JsEngineLease {
 impl Drop for JsEngineLease {
     /// Returns the leased engine when execution completes or is cancelled.
     fn drop(&mut self) {
-        self.pool
-            .lock()
-            .expect("JsToolManager engine pool mutex poisoned")
-            .push(self.engine.clone());
+        let mut pool = self.pool.lock().expect("JsToolManager engine pool mutex poisoned");
+        if self._permit.semaphore().is_closed() {
+            drop(pool);
+            self.engine.destroy();
+        } else {
+            pool.push(self.engine.clone());
+        }
     }
 }
 
@@ -69,7 +72,7 @@ impl JsToolManager {
             .clone()
             .acquire_owned()
             .await
-            .expect("JsToolManager engine semaphore must remain open");
+            .map_err(|_| JsExecutionError::worker_unavailable("JavaScript tool manager is closed"))?;
         let idleEngine = self
             .enginePool
             .lock()
@@ -92,10 +95,10 @@ impl JsToolManager {
     #[allow(non_snake_case)]
     async fn withExecutionEngineForPackage<T>(
         &self,
-        selection: &JsPackageToolSelection,
+        runtime: Option<&operit_plugin_sdk::toolpkg::ToolPkgParser::ToolPkgSubpackageRuntime>,
         block: impl FnOnce(Arc<dyn JsExecutionEngine>) -> JsExecutionCompletion<JsExecutionResult<T>>,
     ) -> JsExecutionResult<T> {
-        if let Some(runtime) = selection.toolpkg_runtime.as_ref() {
+        if let Some(runtime) = runtime {
             let contextKey = format!("toolpkg_main:{}", runtime.containerPackageName);
             let engine = self
                 .packageRuntime
@@ -370,15 +373,9 @@ impl JsToolManager {
         let runtimeParams = self
             .convertToolParameters(&request, &packageName, &selection)
             .map_err(|error| JsExecutionError::invalid_request(error.message))?;
-        self.withExecutionEngineForPackage(&selection, |engine| {
-            engine.execute_script_function(
-                &selection.definition.script,
-                &functionName,
-                &runtimeParams,
-                &BTreeMap::new(),
-                None,
-                true,
-                60,
+        self.withExecutionEngineForPackage(selection.toolpkg_runtime.as_ref(), |engine| {
+            engine.execute_script_function_owned(
+                selection.definition.script, functionName, runtimeParams, BTreeMap::new(),
             )
         })
         .await
@@ -408,15 +405,9 @@ impl JsToolManager {
         };
 
         let result = self
-            .withExecutionEngineForPackage(&selection, |engine| {
-                engine.execute_script_function(
-                    &selection.definition.script,
-                    &functionName,
-                    &runtimeParams,
-                    &BTreeMap::new(),
-                    None,
-                    true,
-                    60,
+            .withExecutionEngineForPackage(selection.toolpkg_runtime.as_ref(), |engine| {
+                engine.execute_script_function_owned(
+                    selection.definition.script, functionName, runtimeParams, BTreeMap::new(),
                 )
             })
             .await;
@@ -427,7 +418,11 @@ impl JsToolManager {
     }
 
     /// Releases JavaScript tool manager resources.
-    pub fn destroy(&self) {}
+    pub fn destroy(&self) {
+        self.enginePermits.close();
+        let engines = std::mem::take(&mut *self.enginePool.lock().expect("JsToolManager engine pool mutex poisoned"));
+        for engine in engines { engine.destroy(); }
+    }
 }
 
 impl JsPackageExecutor for JsToolManager {
@@ -524,12 +519,17 @@ mod tests {
         }
 
         /// Reports no environment value in manager tests.
-        fn read_environment_variable(&self, _key: &str) -> Result<Option<String>, String> {
+        fn prepare_environment(&self, _owner: &operit_plugin_sdk::javascript::JsEnvironmentOwner, _declared_names: &[String]) -> Result<(), String> {
+            Ok(())
+        }
+
+        /// Returns the environment value selected by the test host.
+        fn read_environment_variable(&self, _owner: &operit_plugin_sdk::javascript::JsEnvironmentOwner, _key: &str) -> Result<Option<String>, String> {
             Ok(None)
         }
 
         /// Ignores environment writes in manager tests.
-        fn write_environment_variable(&self, _key: &str, _value: &str) -> Result<(), String> {
+        fn write_environment_variable(&self, _owner: &operit_plugin_sdk::javascript::JsEnvironmentOwner, _key: &str, _value: &str) -> Result<(), String> {
             Ok(())
         }
 
@@ -1391,6 +1391,43 @@ mod tests {
         (manager, package_runtime)
     }
 
+    /// Idle and in-flight engines must both leave the pool when its manager closes.
+    #[tokio::test(flavor = "current_thread")]
+    async fn manager_shutdown_releases_idle_and_returning_engines() {
+        use operit_host_api::HostManager::{setDefaultHostJavaScriptRuntimeHost, setDefaultHostRuntimeTaskSchedulerHost};
+        setDefaultHostJavaScriptRuntimeHost(Arc::new(operit_host_native_scheduler::NativeHostJavaScriptRuntimeHost::new()));
+        setDefaultHostRuntimeTaskSchedulerHost(Arc::new(operit_host_native_scheduler::NativeHostRuntimeTaskSchedulerHost::new()));
+        register_test_runtime_storage("js-tool-manager-shutdown");
+        let (manager, _) = toolpkg_manager("exports.run = () => true;");
+        let idle = manager.withEngine(|engine| Box::pin(async move { Ok(engine) })).await.unwrap();
+        let (entered, started) = tokio::sync::oneshot::channel();
+        let (resume, released) = tokio::sync::oneshot::channel();
+        let execution = manager.withEngine(|engine| Box::pin(async move {
+            entered.send(engine).ok().unwrap();
+            released.await.unwrap();
+            Ok(())
+        }));
+        tokio::pin!(execution);
+        let active = tokio::select! {
+            result = &mut execution => panic!("Execution completed before shutdown: {result:?}"),
+            engine = started => engine.unwrap(),
+        };
+        // Keep another idle engine while the leased instance is still active.
+        let other = manager.withEngine(|engine| Box::pin(async move { Ok(engine) })).await.unwrap();
+        assert_eq!(manager.enginePool.lock().unwrap().len(), 1);
+        manager.destroy();
+        manager.destroy();
+        assert!(manager.enginePool.lock().unwrap().is_empty());
+        resume.send(()).unwrap();
+        execution.await.unwrap();
+        assert!(manager.enginePool.lock().unwrap().is_empty());
+        for engine in [idle, active, other] {
+            assert!(engine.execute_script_function("exports.run = () => 42;", "run",
+                &BTreeMap::new(), &BTreeMap::new(), None, false).await.is_err());
+        }
+        assert!(manager.withEngine(|_| Box::pin(async { Ok(()) })).await.is_err());
+    }
+
     #[tokio::test(flavor = "current_thread")]
     /// Verifies a minified ToolPkg downloads through the standard external path and executes.
     async fn minified_toolpkg_download_executes_registered_tool() {
@@ -1563,7 +1600,6 @@ mod tests {
                 &BTreeMap::new(),
                 None,
                 true,
-                60,
             )
             .await;
 

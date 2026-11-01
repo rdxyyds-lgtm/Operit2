@@ -48,6 +48,11 @@ export async function chatConfigurationDeleteApi(event: ToolPkg.PublicApiEvent<{
   return { deleted: true };
 }
 
+/** Looks up a persisted binding, allowing chats without an association. */
+export async function chatConfigurationBindingFindApi(event: ToolPkg.PublicApiEvent<DomainInput<"chat.configuration.binding.find">>): Promise<DomainOutput<"chat.configuration.binding.find">> {
+  return dispatchDomain("chat.configuration.binding.find", event.payload);
+}
+
 /** Reads the actual binding without changing the current global selection. */
 export async function chatConfigurationBindingReadApi(event: ToolPkg.PublicApiEvent<DomainInput<"chat.configuration.binding.read">>): Promise<DomainOutput<"chat.configuration.binding.read">> {
   return dispatchDomain("chat.configuration.binding.read", parseDomainPayload("chat.configuration.binding.read", event.payload));
@@ -67,6 +72,7 @@ export async function chatConfigurationBindingDeleteApi(event: ToolPkg.PublicApi
 export function registerChatConfigurationApis(): void {
   ToolPkg.registerApi({ name: "chat.configuration.resolve", function: chatConfigurationResolveApi });
   ToolPkg.registerApi({ name: "chat.configuration.delete", function: chatConfigurationDeleteApi });
+  ToolPkg.registerApi({ name: "chat.configuration.binding.find", function: chatConfigurationBindingFindApi });
   ToolPkg.registerApi({ name: "chat.configuration.binding.read", function: chatConfigurationBindingReadApi });
   ToolPkg.registerApi({ name: "chat.configuration.binding.write", function: chatConfigurationBindingWriteApi });
   ToolPkg.registerApi({ name: "chat.configuration.binding.delete", function: chatConfigurationBindingDeleteApi });
@@ -80,6 +86,15 @@ export async function memoryQueryApi(event: ToolPkg.PublicApiEvent<MemoryQueryRe
     limit: input.limit,
     ...(input.snapshotId === null ? {} : { snapshot_id: input.snapshotId }),
   }, { chatId: null, participantId: input.participantId, callerName: event.callerPackage });
+}
+
+/** Executes one built-in recall query through the same participant-bound snapshot state. */
+export async function memoryRecallQuery(participantId: string, query: string, limit: number, snapshotId: string | null): Promise<MemoryQueryResult> {
+  return memoryQueries.execute("query_memory", {
+    query,
+    limit,
+    ...(snapshotId === null ? {} : { snapshot_id: snapshotId }),
+  }, { chatId: null, participantId, callerName: null });
 }
 
 /** Executes memory.chat.list through the sole private database-backed service. */
@@ -110,6 +125,16 @@ export async function memoryRebuildStartApi(event: ToolPkg.PublicApiEvent<Domain
 /** Executes memory.rebuild.progress through the sole private database-backed service. */
 export async function memoryRebuildProgressApi(event: ToolPkg.PublicApiEvent<DomainInput<"memory.rebuild.progress">>): Promise<DomainOutput<"memory.rebuild.progress">> {
   return dispatchDomain("memory.rebuild.progress", parseDomainPayload("memory.rebuild.progress", event.payload));
+}
+
+/** Executes memory.candidates.retryFailed through the sole private database-backed service. */
+export async function memoryCandidatesRetryFailedApi(event: ToolPkg.PublicApiEvent<DomainInput<"memory.candidates.retryFailed">>): Promise<DomainOutput<"memory.candidates.retryFailed">> {
+  return dispatchDomain("memory.candidates.retryFailed", parseDomainPayload("memory.candidates.retryFailed", event.payload));
+}
+
+/** Executes memory.candidates.clearFailed through the sole private database-backed service. */
+export async function memoryCandidatesClearFailedApi(event: ToolPkg.PublicApiEvent<DomainInput<"memory.candidates.clearFailed">>): Promise<DomainOutput<"memory.candidates.clearFailed">> {
+  return dispatchDomain("memory.candidates.clearFailed", parseDomainPayload("memory.candidates.clearFailed", event.payload));
 }
 
 /** Executes memory.rebuild.cancel through the sole private database-backed service. */
@@ -454,6 +479,8 @@ export function registerDomainApis(): void {
   ToolPkg.registerApi<DomainInput<"memory.embeddings.rebuild">, DomainOutput<"memory.embeddings.rebuild">>({ name: "memory.embeddings.rebuild", function: memoryEmbeddingsRebuildApi });
   ToolPkg.registerApi<DomainInput<"memory.rebuild.cancel">, DomainOutput<"memory.rebuild.cancel">>({ name: "memory.rebuild.cancel", function: memoryRebuildCancelApi });
   ToolPkg.registerApi<DomainInput<"memory.rebuild.progress">, DomainOutput<"memory.rebuild.progress">>({ name: "memory.rebuild.progress", function: memoryRebuildProgressApi });
+  ToolPkg.registerApi<DomainInput<"memory.candidates.retryFailed">, DomainOutput<"memory.candidates.retryFailed">>({ name: "memory.candidates.retryFailed", function: memoryCandidatesRetryFailedApi });
+  ToolPkg.registerApi<DomainInput<"memory.candidates.clearFailed">, DomainOutput<"memory.candidates.clearFailed">>({ name: "memory.candidates.clearFailed", function: memoryCandidatesClearFailedApi });
   ToolPkg.registerApi<DomainInput<"memory.rebuild.start">, DomainOutput<"memory.rebuild.start">>({ name: "memory.rebuild.start", function: memoryRebuildStartApi });
   ToolPkg.registerApi<DomainInput<"memory.categorize">, DomainOutput<"memory.categorize">>({ name: "memory.categorize", function: memoryCategorizeApi });
   ToolPkg.registerApi<DomainInput<"memory.chat.update">, DomainOutput<"memory.chat.update">>({ name: "memory.chat.update", function: memoryChatUpdateApi });

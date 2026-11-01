@@ -8,15 +8,95 @@ import 'package:operit2/core/bridge/OperitRuntimeBridge.dart';
 import 'package:operit2/core/link/CoreLinkCodec.dart';
 import 'package:operit2/core/link/CoreLinkProtocol.dart';
 import 'package:operit2/core/proxy/generated/CoreProxyClients.g.dart';
+import 'package:operit2/ui/common/markdown/MarkdownImageRenderer.dart';
+import 'package:operit2/ui/common/markdown/MarkdownRemoteImage.dart';
 import 'package:operit2/ui/features/packages/screens/ComposeDslImageSource.dart';
 import 'package:operit2/ui/features/packages/screens/ToolPkgComposeDslWebView.dart';
 import 'package:operit2/ui/features/packages/screens/ToolPkgUiLauncherScreen.dart';
 
 final png = base64Decode(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=',
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAANSURBVBhXY2Bg+P8fAAMCAf/Jsq3uAAAAAElFTkSuQmCC',
 );
 
+/// Verifies shared VFS image resolution and the production Markdown rendering path.
 void main() {
+  testWidgets(
+    'Markdown shared images read Core VFS and reuse the decoded image',
+    (tester) async {
+      const path =
+          '/app/data/plugin_data/space/com.operit.image_display/chart.png';
+      final bridge = _VfsFileBridge({
+        '__type': 'BinaryFileContentData',
+        'path': path,
+        'contentBase64': base64Encode(png),
+        'size': png.length,
+      });
+      final clients = GeneratedCoreProxyClients(bridge);
+      final source = extractMarkdownImageUrl('![Chart]($path)');
+
+      /// Renders the same Markdown image through one stable Core connection.
+      Future<void> render() async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: SizedBox(
+              width: 200,
+              height: 140,
+              child: MarkdownRemoteImage(
+                url: source,
+                alt: 'Chart',
+                clients: clients,
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.runAsync(
+          () => precacheImage(
+            tester.widget<Image>(find.byType(Image)).image,
+            tester.element(find.byType(MarkdownRemoteImage)),
+          ),
+        );
+        await tester.pump();
+      }
+
+      await render();
+      expect(tester.widget<RawImage>(find.byType(RawImage)).image, isNotNull);
+      expect(bridge.calls.single.methodName, 'executeTool');
+      expect((bridge.calls.single.args as Map)['tool'], {
+        'name': 'read_file_binary',
+        'parameters': [
+          {'name': 'path', 'value': path},
+        ],
+      });
+      await render();
+      expect(bridge.calls, hasLength(1));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('Markdown VFS failures display an error after one file request', (
+    tester,
+  ) async {
+    final bridge = _VfsFileBridge(
+      {'__type': 'StringResultData', 'value': ''},
+      success: false,
+      error: 'VFS access denied',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MarkdownRemoteImage(
+          url:
+              '/app/data/plugin_data/space/com.operit.image_display/missing.png',
+          clients: GeneratedCoreProxyClients(bridge),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.broken_image_outlined), findsOneWidget);
+    expect(bridge.calls.single.methodName, 'executeTool');
+    expect(tester.takeException(), isNull);
+  });
+
   test(
     'VFS uses the generated Core binary file service without rewriting the path',
     () async {
@@ -238,6 +318,72 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+  testWidgets('animationKey creates a fresh stream only on explicit replay', (
+    tester,
+  ) async {
+    var reads = 0;
+    final host = ComposeDslWebViewHostContext(
+      packageName: 'test.animation',
+      routeInstanceId: 'route',
+      executionContextKey: 'session',
+      dispatchAction: (_, [payload]) async => null,
+      runtimeOptionsProvider: () => {},
+      readFileBytes: (_) async {
+        reads++;
+        return png;
+      },
+    );
+    Widget render(String animationKey, double width) => MaterialApp(
+      home: buildComposeDslLayoutForTest(
+        node: {
+          'type': 'Image',
+          'props': {
+            'key': 'pet',
+            'path': '/app/data/pet/eat.webp',
+            'animationKey': animationKey,
+            'width': width,
+            'height': 44,
+          },
+          'children': [],
+          'slots': {},
+        },
+        hostContext: host,
+        splitMarkdownContent: (_) async => [],
+        onTextInput: (_, text) async => null,
+      ),
+    );
+    await tester.pumpWidget(render('eat:1', 44));
+    await tester.pumpAndSettle();
+    final first = tester.widget<Image>(find.byType(Image)).image;
+    final stream = first.resolve(ImageConfiguration.empty);
+    expect(reads, 1);
+    await tester.pumpWidget(render('eat:1', 88));
+    await tester.pumpAndSettle();
+    final resized = tester.widget<Image>(find.byType(Image)).image;
+    expect(resized, same(first));
+    expect(
+      resized.resolve(ImageConfiguration.empty).completer,
+      same(stream.completer),
+    );
+    expect(reads, 1, reason: 'Resizing preserves the active decoder');
+    await tester.pumpWidget(render('eat:2', 88));
+    await tester.pumpAndSettle();
+    final replay = tester.widget<Image>(find.byType(Image)).image;
+    expect(replay, isNot(equals(first)));
+    expect(
+      replay.resolve(ImageConfiguration.empty).completer,
+      isNot(same(stream.completer)),
+    );
+    expect(
+      reads,
+      2,
+      reason: 'Replay loads a fresh codec for the same resource path',
+    );
+    await tester.pumpWidget(render('eat:2', 128));
+    await tester.pumpAndSettle();
+    expect(reads, 2);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('same-path images refresh when the owning session changes', (
     tester,
   ) async {

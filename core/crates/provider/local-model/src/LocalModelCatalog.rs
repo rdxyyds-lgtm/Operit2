@@ -28,9 +28,51 @@ const SHERPA_ONNX_WEB_ASSET_BASE_URL: &str = "https://models.operit.app/sherpa-o
 pub struct LocalModelCatalog;
 
 impl LocalModelCatalog {
+    /// A pinned, complete small instruct model available for on-device download.
+    pub fn qwen3LlamaCpp() -> LocalModelManifest {
+        LocalModelManifest {
+            id: "qwen3-0.6b-gguf".to_string(), version: "23749fefcc72300e3a2ad315e1317431b06b590a".to_string(),
+            displayName: "Qwen3 0.6B (llama.cpp)".to_string(),
+            description: "Qwen3 0.6B local chat model; weights remain on this device.".to_string(),
+            kind: LocalModelKind::Chat, engine: LocalEngineKind::LlamaCpp,
+            license: "apache-2.0".to_string(), homepage: "https://huggingface.co/Qwen/Qwen3-0.6B-GGUF".to_string(),
+            languages: vec!["zh".to_string(), "en".to_string()], tags: vec!["llm".to_string(), "offline".to_string()],
+            engineRequirement: Some(LocalEngineRequirement { engineId: "llama-cpp".to_string(), version: "b11829".to_string() }),
+            driver: Some(LocalModelDriver::LlamaCpp { model: "Qwen3-0.6B-Q8_0.gguf".to_string() }),
+            sources: vec![LocalModelSource { id: "huggingface".to_string(), kind: LocalModelSourceKind::HuggingFace,
+                repository: "Qwen/Qwen3-0.6B-GGUF".to_string(), revision: "23749fefcc72300e3a2ad315e1317431b06b590a".to_string(), baseUrl: "https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/23749fefcc72300e3a2ad315e1317431b06b590a".to_string() }],
+            installSource: LocalModelInstallSource::Files,
+            files: vec![LocalModelFile { relativePath: "Qwen3-0.6B-Q8_0.gguf".to_string(), sha256: "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031".to_string(), byteSize: 639446688, sourceId: "huggingface".to_string() }],
+        }
+    }
+
+    /// A pinned, complete small instruct model available for on-device download.
+    pub fn qwen3Mnn() -> LocalModelManifest {
+        LocalModelManifest {
+            id: "qwen3-0.6b-mnn".to_string(), version: "34dfccda1187ded6e07ea06426da576b0b793c6b".to_string(),
+            displayName: "Qwen3 0.6B (MNN)".to_string(),
+            description: "Qwen3 0.6B local chat model; weights remain on this device.".to_string(),
+            kind: LocalModelKind::Chat, engine: LocalEngineKind::Mnn,
+            license: "apache-2.0".to_string(), homepage: "https://huggingface.co/taobao-mnn/Qwen3-0.6B-MNN".to_string(),
+            languages: vec!["zh".to_string(), "en".to_string()], tags: vec!["llm".to_string(), "offline".to_string()],
+            engineRequirement: Some(LocalEngineRequirement { engineId: "mnn".to_string(), version: "3.6.1".to_string() }),
+            driver: Some(LocalModelDriver::Mnn { config: "config.json".to_string() }),
+            sources: vec![LocalModelSource { id: "huggingface".to_string(), kind: LocalModelSourceKind::HuggingFace,
+                repository: "taobao-mnn/Qwen3-0.6B-MNN".to_string(), revision: "34dfccda1187ded6e07ea06426da576b0b793c6b".to_string(), baseUrl: "https://huggingface.co/taobao-mnn/Qwen3-0.6B-MNN/resolve/34dfccda1187ded6e07ea06426da576b0b793c6b".to_string() }],
+            installSource: LocalModelInstallSource::Files,
+            files: vec![LocalModelFile { relativePath: "config.json".to_string(), sha256: "d74912484c7f0527494c9184d8d6806554be501e15ca559a1610370b80839ef7".to_string(), byteSize: 403, sourceId: "huggingface".to_string() },
+LocalModelFile { relativePath: "llm.mnn".to_string(), sha256: "d426c65a5159c938ccc237cdfbd982137f276804f27b414ca0ecf3fc0a660f8c".to_string(), byteSize: 461520, sourceId: "huggingface".to_string() },
+LocalModelFile { relativePath: "llm.mnn.weight".to_string(), sha256: "953afb7e0165818add34a7a6caf0af5d0ed9428da102eb22c9b98ee9da292e9f".to_string(), byteSize: 450810338, sourceId: "huggingface".to_string() },
+LocalModelFile { relativePath: "llm_config.json".to_string(), sha256: "63f9a2f67ec2ae98b4c2363b46355040c34ca5c87a740ab3c94e08288a53225a".to_string(), byteSize: 4880, sourceId: "huggingface".to_string() },
+LocalModelFile { relativePath: "tokenizer.txt".to_string(), sha256: "77009625db0b18e74315dd89557c76feaab57e1d54e3240b442649a3c16ec4fb".to_string(), byteSize: 3193569, sourceId: "huggingface".to_string() }],
+        }
+    }
+
     /// Returns all local model manifests bundled as built-in catalog entries.
     pub fn manifests() -> Vec<LocalModelManifest> {
-        vec![
+        let mut manifests = vec![Self::qwen3LlamaCpp(), Self::qwen3Mnn()];
+        manifests.extend(crate::LocalChatCatalog::chatManifests());
+        manifests.extend([
             Self::sherpaOnnxStreamingStt(),
             Self::sherpaOnnxVitsTts(),
             Self::sherpaOnnxVitsZhLlTts(),
@@ -38,7 +80,8 @@ impl LocalModelCatalog {
             Self::sherpaOnnxKittenNanoTts(),
             Self::sherpaOnnxWebAsr(),
             Self::sherpaOnnxWebVitsTts(),
-        ]
+        ]);
+        manifests
     }
 
     /// Returns the cross-platform bilingual Sherpa ONNX streaming STT manifest.
@@ -782,15 +825,143 @@ mod tests {
         assert_eq!(manifest.sources[0].id, OLD_ASSISTANCE_STT_SOURCE_ID);
     }
 
-    /// Verifies the active catalog contains executable STT and TTS driver metadata.
+    /// Verifies every catalog entry declares its driver and engine dependency.
     #[test]
-    fn activeCatalogDeclaresSpeechDrivers() {
+    fn activeCatalogDeclaresDrivers() {
         let manifests = LocalModelCatalog::manifests();
-        assert_eq!(manifests.len(), 7);
+        assert_eq!(
+            manifests
+                .iter()
+                .filter(|m| m.kind != LocalModelKind::Chat)
+                .count(),
+            7
+        );
         assert!(manifests.iter().all(|manifest| manifest.driver.is_some()));
         assert!(manifests
             .iter()
             .all(|manifest| manifest.engineRequirement.is_some()));
+    }
+
+    /// Guards against duplicate ids and catalog entries that cannot be installed or resolved.
+    #[test]
+    fn chatCatalogHasCompletePinnedInstallMetadata() {
+        use crate::LocalEngineCatalog::LocalEngineCatalog;
+        use crate::LocalModelStorage::buildLocalModelStoragePath;
+        use std::collections::HashSet;
+
+        let engines = LocalEngineCatalog::manifests();
+        let mut ids = HashSet::new();
+        for manifest in LocalModelCatalog::manifests() {
+            assert!(
+                ids.insert(manifest.id.clone()),
+                "duplicate model: {}",
+                manifest.id
+            );
+            if manifest.kind != LocalModelKind::Chat {
+                continue;
+            }
+            assert!(!manifest.license.is_empty(), "{}", manifest.id);
+            assert!(!manifest.languages.is_empty(), "{}", manifest.id);
+            assert_eq!(manifest.version.len(), 40, "{}", manifest.id);
+            assert!(manifest.version.bytes().all(|b| b.is_ascii_hexdigit()));
+            assert!(buildLocalModelStoragePath(
+                &manifest.kind,
+                &manifest.engine,
+                &manifest.id,
+                &manifest.version
+            )
+            .is_ok());
+            let requirement = manifest.engineRequirement.as_ref().unwrap();
+            assert!(
+                engines
+                    .iter()
+                    .any(|engine| engine.id == requirement.engineId
+                        && engine.version == requirement.version),
+                "missing engine: {}",
+                manifest.id
+            );
+            assert!(!manifest.supportsPlatform(&LocalPlatform::Web));
+            for platform in [
+                LocalPlatform::Macos,
+                LocalPlatform::Linux,
+                LocalPlatform::Windows,
+                LocalPlatform::Android,
+                LocalPlatform::Ios,
+                LocalPlatform::Ohos,
+            ] {
+                assert_eq!(
+                    manifest.supportsPlatform(&platform),
+                    cfg!(feature = "native-llm")
+                );
+            }
+            let entryPath = match manifest.driver.as_ref().unwrap() {
+                LocalModelDriver::LlamaCpp { model } => model,
+                LocalModelDriver::Mnn { config } => config,
+                _ => panic!("unexpected chat driver: {}", manifest.id),
+            };
+            assert!(manifest
+                .files
+                .iter()
+                .any(|file| &file.relativePath == entryPath));
+            for file in &manifest.files {
+                assert!(file.byteSize > 0, "{}: {}", manifest.id, file.relativePath);
+                assert_eq!(
+                    file.sha256.len(),
+                    64,
+                    "{}: {}",
+                    manifest.id,
+                    file.relativePath
+                );
+                assert!(file.sha256.bytes().all(|b| b.is_ascii_hexdigit()));
+                let source = manifest.sourceForFile(file).unwrap();
+                assert_eq!(source.revision, manifest.version);
+                assert!(source
+                    .baseUrl
+                    .ends_with(&format!("/resolve/{}", manifest.version)));
+                let mirror = manifest
+                    .sourceForFileWithPreferredKind(file, Some(LocalModelSourceKind::HfMirror))
+                    .unwrap();
+                assert!(mirror
+                    .fileUrl(&file.relativePath)
+                    .starts_with("https://hf-mirror.com/"));
+            }
+        }
+    }
+
+    /// Keeps both existing selections and the requested families in the visible chat catalog.
+    #[test]
+    fn chatCatalogIncludesSmallModelsAndRequestedFamilies() {
+        let chats: Vec<_> = LocalModelCatalog::manifests()
+            .into_iter()
+            .filter(|manifest| manifest.kind == LocalModelKind::Chat)
+            .collect();
+        for id in [
+            "qwen3-0.6b-gguf",
+            "qwen3-0.6b-mnn",
+            "qwen3.8-27b-gguf",
+            "qwen3.5-0.8b-gguf",
+            "qwen2.5-coder-0.5b-instruct-gguf",
+            "spark-x2.6-1.7b-gguf",
+            "spark-x2.6-4b-gguf",
+            "smollm2-135m-instruct-gguf",
+            "minicpm4-0.5b-gguf",
+            "llama-3.2-1b-instruct-gguf",
+            "gemma-3-1b-it-gguf",
+            "lfm2.5-1.2b-instruct-gguf",
+            "phi-4-mini-instruct-gguf",
+        ] {
+            assert!(
+                chats.iter().any(|manifest| manifest.id == id),
+                "missing model: {id}"
+            );
+        }
+        assert!(
+            chats
+                .iter()
+                .filter(|manifest| manifest.declaredByteSize() < 1_000_000_000)
+                .count()
+                >= 8
+        );
     }
 
     /// Verifies browser bundles and native models cannot be selected on the wrong runtime.

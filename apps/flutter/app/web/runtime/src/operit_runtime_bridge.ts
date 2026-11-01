@@ -533,6 +533,8 @@ interface RuntimeGlobals {
 }
 
 interface RuntimeWorkerStorageBridge {
+  modifiedAt(prefix: string, path: string): number;
+  setModifiedAt(prefix: string, path: string, modifiedAt: number): void;
   read(prefix: string, path: string): Uint8Array;
   readRange(prefix: string, path: string, offset: number, length: number): Uint8Array;
   write(prefix: string, path: string, content: Uint8Array): void;
@@ -3979,6 +3981,18 @@ self.onmessage = (event) => {
       },
     }),
     runtimeStorage: registerWorkerHostModule({
+      /** Reads file metadata from the worker-owned OPFS index. */
+      modifiedAt(path: string): number {
+        const address = workerStorageAddress(runtimePrefix, path);
+        if (!runtimeGlobal.__operitRuntimeWorkerStorage) { throw new Error("runtime worker OPFS storage is not installed"); }
+        return runtimeGlobal.__operitRuntimeWorkerStorage.modifiedAt(address.prefix, address.path);
+      },
+      /** Preserves source metadata in the worker-owned OPFS index. */
+      setModifiedAt(path: string, modifiedAt: number): void {
+        const address = workerStorageAddress(runtimePrefix, path);
+        if (!runtimeGlobal.__operitRuntimeWorkerStorage) { throw new Error("runtime worker OPFS storage is not installed"); }
+        runtimeGlobal.__operitRuntimeWorkerStorage.setModifiedAt(address.prefix, address.path, modifiedAt);
+      },
       readBytes(path: string): Uint8Array {
         return storageRead(runtimePrefix, path);
       },
@@ -4293,6 +4307,9 @@ self.onmessage = (event) => {
       writeFileBytes(path: string, content: Uint8Array): void {
         storageWrite(filePrefix, path, content);
       },
+      appendFileBytes(path: string, content: Uint8Array): void {
+        storageAppend(filePrefix, path, content);
+      },
       deleteFile(path: string, recursive: boolean): void {
         storageDelete(filePrefix, path, recursive);
         deleteFileDirectory(path, recursive);
@@ -4486,6 +4503,14 @@ self.onmessage = (event) => {
       },
       toast(message: string): void {
         console.info("[Operit toast]", message);
+      },
+      /** Writes clipboard text and reports the accepted text synchronously. */
+      setClipboardText(text: string) {
+        if (!navigator.clipboard || !navigator.clipboard.writeText) {
+          throw new Error("Browser Clipboard API is unavailable");
+        }
+        void navigator.clipboard.writeText(text);
+        return { text };
       },
       /** Sends a browser system notification and requests the required permission. */
       sendNotification(title: string, message: string, activationJson: string): void {

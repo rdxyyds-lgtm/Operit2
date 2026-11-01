@@ -36,6 +36,7 @@ pub struct NativePtyTerminalHost {
 #[derive(Clone)]
 struct PtyCommandSpec {
     program: String,
+    controllingTty: bool,
     args: Vec<String>,
     terminalType: String,
     description: String,
@@ -96,7 +97,13 @@ impl PtyCommandSpec {
     /// Builds the default interactive bash command configuration.
     fn nativeBash() -> Self {
         Self {
-            program: if cfg!(target_os = "macos") { "/bin/bash" } else { "bash" }.to_string(),
+            program: if cfg!(target_os = "macos") {
+                "/bin/bash"
+            } else {
+                "bash"
+            }
+            .to_string(),
+            controllingTty: !cfg!(target_os = "macos"),
             args: vec![
                 "--noprofile".to_string(),
                 "--norc".to_string(),
@@ -116,6 +123,7 @@ impl PtyCommandSpec {
     fn systemShell() -> Self {
         Self {
             program: "/bin/sh".to_string(),
+            controllingTty: !cfg!(target_os = "macos"),
             args: vec!["-i".to_string()],
             terminalType: "shell".to_string(),
             description: "Privileged system /bin/sh terminal".to_string(),
@@ -150,6 +158,7 @@ impl PtyCommandSpec {
         }
         Ok(Self {
             program,
+            controllingTty: !cfg!(target_os = "macos"),
             args: command.arguments,
             terminalType: "shell".to_string(),
             description,
@@ -223,6 +232,39 @@ impl NativePtyTerminalHost {
         Ok(Self {
             state: Arc::new(Mutex::new(TerminalState::default())),
             commandSpec: Arc::new(PtyCommandSpec::customShell(command)?),
+        })
+    }
+
+    /// Retains ownership after shell exit, until the caller closes the session.
+    pub fn ownsSession(&self, sessionId: &str) -> HostResult<bool> {
+        Ok(self.lockState()?.ptySessions.contains_key(sessionId))
+    }
+
+    /// Selects whether the real PTY becomes the child process's controlling TTY.
+    /// Apple sandbox hosts must disable TIOCSCTTY; unrestricted hosts keep job control.
+    pub fn withControllingTty(mut self, enabled: bool) -> Self {
+        Arc::make_mut(&mut self.commandSpec).controllingTty = enabled;
+        self
+    }
+
+    /// Creates a native login shell with its normal startup files and environment.
+    pub fn loginShell(program: &str, terminalType: &str, home: &str) -> HostResult<Self> {
+        if !std::path::Path::new(program).is_absolute() || !std::path::Path::new(program).is_file() {
+            return Err(HostError::new(format!("Login shell is unavailable: {program}")));
+        }
+        let home = nonBlank(home, "home_directory")?;
+        let mut spec = PtyCommandSpec::nativeBash();
+        spec.program = program.to_string();
+        spec.controllingTty = true;
+        spec.args = vec!["-l".to_string(), "-i".to_string()];
+        spec.terminalType = nonBlank(terminalType, "terminal_type")?;
+        spec.description = format!("Native {program} login shell");
+        spec.commandProtocol = PtyCommandProtocol::ExplicitMarker;
+        spec.initialWorkingDirectory = PtyInitialWorkingDirectory::Fixed(home);
+        spec.environment = vec![("SHELL".to_string(), program.to_string())];
+        Ok(Self {
+            state: Arc::new(Mutex::new(TerminalState::default())),
+            commandSpec: Arc::new(spec),
         })
     }
 
@@ -494,7 +536,11 @@ impl TerminalHost for NativePtyTerminalHost {
                 .ok_or_else(|| {
                     HostError::new(format!("Terminal session does not exist: {sessionId}"))
                 })?;
-            if session.commandRunning { return Err(HostError::new("Terminal session already has a command in progress")); }
+            if session.commandRunning {
+                return Err(HostError::new(
+                    "Terminal session already has a command in progress",
+                ));
+            }
             clearPtyCommandOutput(&session.commandOutput)?;
             let commandInput = ptyCommandInput(&normalizedCommand, session.commandProtocol);
             let commandEcho = commandInput.trim_end().to_string();
@@ -513,8 +559,13 @@ impl TerminalHost for NativePtyTerminalHost {
             )
         };
 
-        let result =
-            executePtyCommandInSession(commandOutput, &commandEcho, timeoutMs, commandProtocol, onOutput);
+        let result = executePtyCommandInSession(
+            commandOutput,
+            &commandEcho,
+            timeoutMs,
+            commandProtocol,
+            onOutput,
+        );
         {
             let mut state = self.lockState()?;
             if let Some(session) = state.ptySessions.get_mut(&normalizedSessionId) {
@@ -525,7 +576,11 @@ impl TerminalHost for NativePtyTerminalHost {
                     if let Some(workingDir) = cancelTimedOutPtyCommand(session)? {
                         session.workingDir = workingDir;
                     }
-                } else if let Some(workingDir) = result.as_ref().ok().and_then(|receipt| receipt.workingDir.clone()) {
+                } else if let Some(workingDir) = result
+                    .as_ref()
+                    .ok()
+                    .and_then(|receipt| receipt.workingDir.clone())
+                {
                     session.workingDir = workingDir;
                 }
             }
@@ -713,10 +768,13 @@ fn createPtySession(
         .openpty(ptySize(rows, cols))
         .map_err(|error| HostError::new(format!("PTY open failed: {error}")))?;
     // Acquire all master handles before spawning, so setup errors cannot leak a shell.
-    let mut reader = pair.master.try_clone_reader()
+    let mut reader = pair
+        .master
+        .try_clone_reader()
         .map_err(|error| HostError::new(format!("PTY reader setup failed: {error}")))?;
-    let writer = Arc::new(Mutex::new(pair.master.take_writer()
-        .map_err(|error| HostError::new(format!("PTY writer setup failed: {error}")))?));
+    let writer = Arc::new(Mutex::new(pair.master.take_writer().map_err(|error| {
+        HostError::new(format!("PTY writer setup failed: {error}"))
+    })?));
     let command = posixPtyCommand(&workingDir, commandSpec);
     let mut child = pair.slave.spawn_command(command).map_err(|error| {
         HostError::new(format!(
@@ -733,24 +791,29 @@ fn createPtySession(
     let screenOutputForThread = screenOutput.clone();
     let writerForThread = writer.clone();
     let cursorStateForThread = cursorState.clone();
-    thread::spawn(move || {
-        let mut buffer = [0u8; 4096];
-        loop {
-            match reader.read(&mut buffer) {
-                Ok(0) => break,
-                Ok(count) => {
-                    let chunk = &buffer[..count];
-                    processPtyTerminalQueries(&writerForThread, &cursorStateForThread, chunk);
-                    let commandChunk = stripPtyDeviceStatusReports(chunk);
-                    let visibleChunk = stripPtyPromptMarkers(&commandChunk);
-                    appendPtyOutput(&outputForThread, &visibleChunk);
-                    appendPtyOutput(&screenOutputForThread, &visibleChunk);
-                    appendPtyCommandOutput(&commandOutputForThread, &commandChunk);
+    let reader_task =
+        operit_host_native_scheduler::scheduleNativeServiceTask("operit-pty-reader", move || {
+            let mut buffer = [0u8; 4096];
+            loop {
+                match reader.read(&mut buffer) {
+                    Ok(0) => break,
+                    Ok(count) => {
+                        let chunk = &buffer[..count];
+                        processPtyTerminalQueries(&writerForThread, &cursorStateForThread, chunk);
+                        let commandChunk = stripPtyDeviceStatusReports(chunk);
+                        let visibleChunk = stripPtyPromptMarkers(&commandChunk);
+                        appendPtyOutput(&outputForThread, &visibleChunk);
+                        appendPtyOutput(&screenOutputForThread, &visibleChunk);
+                        appendPtyCommandOutput(&commandOutputForThread, &commandChunk);
+                    }
+                    Err(_) => break,
                 }
-                Err(_) => break,
             }
-        }
-    });
+        });
+    if let Err(error) = reader_task {
+        let _ = child.kill();
+        return Err(error);
+    }
     if commandSpec.commandProtocol == PtyCommandProtocol::ExplicitMarker {
         writePtyPromptMarker(&writer)?;
     }
@@ -828,14 +891,9 @@ fn posixPtyCommand(workingDir: &str, commandSpec: &PtyCommandSpec) -> CommandBui
         PtySessionWorkingDirectoryEnvironment::None => {}
         PtySessionWorkingDirectoryEnvironment::Name(key) => command.env(key, workingDir),
     }
-    // App Sandbox permits creating a PTY but rejects TIOCSCTTY when the child
-    // tries to make it the controlling terminal (EPERM). The PTY master/slave
-    // still provides terminal I/O, resize support, and bash interaction; only
-    // controlling-terminal-only signal delivery is unavailable. Avoiding this
-    // ioctl is required for the App Store sandbox build and keeps the same
-    // host implementation usable by future non-sandboxed builds.
-    #[cfg(target_os = "macos")]
-    command.set_controlling_tty(false);
+    // Isolation is selected by the owning Host from its actual signature.
+    // Unrestricted macOS shells retain controlling-terminal signals and job control.
+    command.set_controlling_tty(commandSpec.controllingTty);
 
     command.env(
         "PS1",
@@ -1734,6 +1792,41 @@ mod tests {
             .executeInSession(&session.sessionId, "printf '%s\\n' \"$OPERIT_V\"", 3000)
             .unwrap();
         assert_eq!(next.output, "中文 'quoted' \\012 $literal");
+    }
+
+    /// Submits literal history characters through both interactive Bash protocols.
+    #[test]
+    fn posix_history_characters_execute_without_expansion() {
+        for protocol in [
+            PtyCommandProtocol::BashPromptCommand,
+            PtyCommandProtocol::ExplicitMarker,
+        ] {
+            let mut host = NativePtyTerminalHost::new();
+            Arc::make_mut(&mut host.commandSpec).commandProtocol = protocol;
+            let session = host.createOrGetSession("terminal_history").unwrap();
+            let result = host
+                .executeInSession(
+                    &session.sessionId,
+                    "#!/bin/bash\nOPERIT_HISTORY_LITERAL='中文 ! !! !$ !123'\nprintf '%s\\n' \"$OPERIT_HISTORY_LITERAL\"",
+                    3000,
+                )
+                .unwrap();
+            assert!(!result.timedOut);
+            assert_eq!(result.exitCode, 0);
+            assert_eq!(result.output.lines().last(), Some("中文 ! !! !$ !123"));
+
+            let next = host
+                .executeInSession(
+                    &session.sessionId,
+                    "printf '%s\\n' \"$OPERIT_HISTORY_LITERAL\" 'single line!'",
+                    3000,
+                )
+                .unwrap();
+            assert!(!next.timedOut);
+            assert_eq!(next.exitCode, 0);
+            assert!(next.output.ends_with("中文 ! !! !$ !123\nsingle line!"));
+            host.closePtySession(&session.sessionId).unwrap();
+        }
     }
 
     /// Applies the timeout to the complete multiline script and keeps the shell responsive.

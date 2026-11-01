@@ -56,6 +56,7 @@ pub enum ChatManagerToolOperation {
     UpdateChatGroup,
     UpdateChatPinned,
     UpdateChatLocked,
+    PromoteChatToRoot,
     ReorderChats,
     DeleteChat,
     SendMessageToAi,
@@ -112,7 +113,7 @@ impl StandardChatManagerTool {
     #[allow(non_snake_case)]
     pub async fn createNewChat(&self, tool: &AITool) -> ToolResult {
         if let Err(error) =
-            validateChatParameterNames(tool, &["set_as_current_chat", "source_chat_id", "input"])
+            validateChatParameterNames(tool, &["set_as_current_chat", "source_chat_id", "parent_chat_id", "input"])
         {
             return toolError(tool, error);
         }
@@ -123,6 +124,11 @@ impl StandardChatManagerTool {
                 return toolError(tool, "source_chat_id must not be blank".to_string())
             }
             Some(value) => Some(value),
+        };
+        let parentChatId = match optionalParameterValue(tool, "parent_chat_id") {
+            Some(value) if value == "null" => None,
+            Some(value) if value.trim().is_empty() => return toolError(tool, "parent_chat_id must not be blank".to_string()),
+            value => value,
         };
         let input = match optionalParameterValue(tool, "input") {
             None => None,
@@ -140,7 +146,7 @@ impl StandardChatManagerTool {
         };
         match self
             .runtimeSupport
-            .createChatRuntime(setAsCurrentChat, sourceChatId, input)
+            .createChatRuntime(setAsCurrentChat, sourceChatId, parentChatId, input)
             .await
         {
             Ok(chatId) => successData(
@@ -329,6 +335,26 @@ impl StandardChatManagerTool {
                 }),
             ),
             Err(error) => toolError(tool, format!("Error updating chat title: {error}")),
+        }
+    }
+
+    /// Clears only the parent relationship through the canonical history repository.
+    #[allow(non_snake_case)]
+    pub fn promoteChatToRoot(&self, tool: &AITool) -> ToolResult {
+        if let Err(error) = validateChatParameterNames(tool, &["chat_id"]) {
+            return toolError(tool, error);
+        }
+        let chatId = parameterValue(tool, "chat_id");
+        if let Err(error) = requireExactIdentifier(&chatId) {
+            return toolError(tool, error);
+        }
+        let manager = match ChatHistoryManager::default() {
+            Ok(manager) => manager,
+            Err(error) => return toolError(tool, error.to_string()),
+        };
+        match manager.promoteChatToRoot(chatId) {
+            Ok(()) => successData(tool, stringResultData("Conversation promoted to root".to_string())),
+            Err(error) => toolError(tool, error.to_string()),
         }
     }
 
@@ -749,6 +775,7 @@ impl AsyncToolExecutor for ChatManagerToolExecutor {
             | ChatManagerToolOperation::UpdateChatGroup
             | ChatManagerToolOperation::UpdateChatPinned
             | ChatManagerToolOperation::UpdateChatLocked
+            | ChatManagerToolOperation::PromoteChatToRoot
             | ChatManagerToolOperation::ReorderChats
             | ChatManagerToolOperation::DeleteChat
             | ChatManagerToolOperation::SendMessageToAi
@@ -788,6 +815,7 @@ impl AsyncToolExecutor for ChatManagerToolExecutor {
                             ChatManagerToolOperation::UpdateChatGroup => tools.updateChatGroup(&tool),
                             ChatManagerToolOperation::UpdateChatPinned => tools.updateChatFlag(&tool, true),
                             ChatManagerToolOperation::UpdateChatLocked => tools.updateChatFlag(&tool, false),
+                            ChatManagerToolOperation::PromoteChatToRoot => tools.promoteChatToRoot(&tool),
                             ChatManagerToolOperation::ReorderChats => tools.reorderChats(&tool),
                             ChatManagerToolOperation::DeleteChat => tools.deleteChat(&tool),
                             ChatManagerToolOperation::SendMessageToAi => tools.sendMessageToAi(&tool).await,
@@ -839,6 +867,7 @@ fn validateChatTool(operation: ChatManagerToolOperation, tool: &AITool) -> ToolV
         | ChatManagerToolOperation::UpdateChatTitle
         | ChatManagerToolOperation::UpdateChatPinned
         | ChatManagerToolOperation::UpdateChatLocked
+        | ChatManagerToolOperation::PromoteChatToRoot
         | ChatManagerToolOperation::DeleteChat
         | ChatManagerToolOperation::GetChatMessages => {
             if parameterValue(tool, "chat_id").trim().is_empty() {
@@ -1290,9 +1319,11 @@ fn parseTurnOptions(tool: &AITool) -> Result<ChatTurnOptions, String> {
         disableWarning: match parseOptionalBoolean(tool, "disable_warning")? { Some(value) => value, None => false },
         continuation: parseContinuation(tool)?,
         chatInputSubmitRequestedHandled: false,
+        chatInputSubmittedHandled: false,
         nativeExecutionId: None,
         outputObserver: None,
         deferSequenceCompletion: false,
+        deferSummary: false,
     })
 }
 

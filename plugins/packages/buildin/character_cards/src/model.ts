@@ -164,6 +164,8 @@ export interface Memory {
 export interface DocumentChunk { id: string; memoryUuid: string; chunkIndex: number; content: string }
 /** Persists one exact owner-scoped message revision candidate and its durable execution metadata. */
 export interface MemoryCandidate {
+  /** Identifies the device that produced this request; released unassigned tasks require explicit retry. */
+  producerNodeId?: string;
   id: string; chatId: string; triggerMessageTimestamp: number; triggerVariantIndex: number; createdAt: number; updatedAt: number;
   status: string; attemptCount: number; lastError: string; sourceType: string;
 }
@@ -178,6 +180,8 @@ export interface MemoryValues {
   tags: string[];
 }
 export interface MemorySearchOptions {
+  limit?: number;
+  excludeIds?: string[];
   ownerKey: string;
   query: string;
   folderPath: string | null;
@@ -225,10 +229,13 @@ export interface MemorySearchConfig {
 
 /** Aggregates independent canonical reads only after every requested read succeeds. */
 export interface GlobalMemoryPreferences { userDescriptionEnabled: boolean; autoUpdateEnabled: boolean }
+/** Controls the built-in per-turn recall that injects matched memories into the model request. */
+export interface MemoryRecallSettings { enabled: boolean; limit: number; allowRepeated: boolean }
 export interface MemorySearchHit { memory: Memory; score: number; keywordScore: number; tagScore: number; vectorScore: number; edgeScore: number; passedThreshold: boolean }
-export interface MemorySearchDebug { query: string; config: MemorySearchConfig; relevanceThreshold: number; memoriesInScopeCount: number; candidates: MemorySearchHit[] }
+export interface MemorySearchDebug { excludedBySnapshotCount: number; query: string; config: MemorySearchConfig; relevanceThreshold: number; memoriesInScopeCount: number; candidates: MemorySearchHit[] }
 
 export interface Snapshot {
+  memoryOwnerKeys: string[];
   memoryPreferences: GlobalMemoryPreferences;
   cards: Card[];
   groups: Group[];
@@ -243,10 +250,17 @@ export interface Snapshot {
 /** Keeps UI and registered domain commands on one finite, plugin-owned request contract. */
 export type Request =
   | { action: "snapshot" }
+  | { action: "createMemoryLibrary"; ownerKey: string }
   | { action: "readGlobalMemoryPreferences" }
   | { action: "readChatMemoryAutoSaveStatus"; chatId: string }
   | { action: "updateCurrentChatMemory"; chatId: string }
+  | { action: "retryFailedCandidates"; chatId: string }
+  | { action: "clearFailedCandidates"; chatId: string }
+  | { action: "retryFailedCandidates"; ownerKey: string }
+  | { action: "clearFailedCandidates"; ownerKey: string }
   | { action: "writeGlobalMemoryPreference"; key: keyof GlobalMemoryPreferences; value: boolean }
+  | { action: "readMemoryRecallSettings" }
+  | { action: "writeMemoryRecallSettings"; settings: MemoryRecallSettings }
   | { action: "searchMemoryDebug"; ownerKey: string; query: string; config: MemorySearchConfig; relevanceThreshold: number }
   | { action: "readMemoryLink"; ownerKey: string; linkId: string }
   | { action: "listThemeChoices" }
@@ -337,11 +351,15 @@ export interface MemoryChatMessage {
 /** Persists one planned extraction window, including the original source-message count. */
 export interface MemoryJobWindow { chatId: string; chatTitle: string; messages: MemoryChatMessage[]; sourceMessageCount: number }
 /** Persists the private rebuild cursor in the same authoritative owner snapshot. */
-export interface MemoryRebuildTask { id: string; windows: MemoryJobWindow[]; nextWindow: number }
+export interface MemoryRebuildTask {
+  /** Identifies the device on which this rebuild was requested. */
+  producerNodeId?: string;
+  id: string; windows: MemoryJobWindow[]; nextWindow: number;
+}
 /** Stores a real provider embedding, keyed by exact configured source and input text. */
 export interface MemoryEmbedding { id: string; endpoint: string; model: string; text: string; vector: number[]; updatedAt: number }
 /** Reports actual committed domain operations for a manual or background extraction. */
-export interface MemoryExtractionResult { ownerKey: string; created: number; updated: number; merged: number; links: number; profileUpdated: boolean }
+export interface MemoryExtractionResult { ownerKey: string; created: number; updated: number; merged: number; links: number; profileUpdated: boolean; skipped: number }
 
 /** Matches the complete MessagePart serde record used by extraction windows. */
 export interface MemoryMessagePart {
@@ -395,10 +413,14 @@ export interface MemorySpace {
   rebuildTask: MemoryRebuildTask | null;
   embeddings: MemoryEmbedding[];
 }
+/** Keeps scheduler state independent of searchable memory sources and vectors. */
+export type MemoryJobState = Omit<MemorySpace, "memories" | "links" | "chunks" | "embeddings">;
+
 /** Owns the file schema for this plugin only; no runtime-wide storage schema is imposed. */
 export interface CharacterState {
   version: 1;
   memoryPreferences: GlobalMemoryPreferences;
+  memoryRecall: MemoryRecallSettings;
   cards: Card[];
   groups: Group[];
   tags: Tag[];
@@ -436,10 +458,15 @@ export interface UserDocumentWrite { ownerKey: string; path: string; content: st
 /** Maps every finite editor action to the exact result returned by its service branch. */
 export interface RequestResults {
   snapshot: Snapshot;
+  createMemoryLibrary: Snapshot;
   readGlobalMemoryPreferences: GlobalMemoryPreferences;
   readChatMemoryAutoSaveStatus: MemoryAutoSaveStatus;
   updateCurrentChatMemory: MemoryExtractionResult;
+  retryFailedCandidates: { retried: number };
+  clearFailedCandidates: { cleared: number };
   writeGlobalMemoryPreference: GlobalMemoryPreferences;
+  readMemoryRecallSettings: MemoryRecallSettings;
+  writeMemoryRecallSettings: MemoryRecallSettings;
   searchMemoryDebug: MemorySearchDebug;
   readMemoryLink: MemoryLink;
   listThemeChoices: import("./selection-application").ThemeChoice[];

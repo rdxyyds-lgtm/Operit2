@@ -3,6 +3,7 @@
 #![allow(non_snake_case)]
 pub use crate::js_sdk::{JsNullable, JsOptional};
 use super::catalog::CatalogToolSource;
+use super::network::NetWebSocketEvent;
 use super::chat::ChatSendEvent;
 use super::core::JsonObject;
 use super::models::ModelsSummary;
@@ -33,6 +34,7 @@ pub enum ToolResultData {
     EnvironmentVariableWriteResultData(EnvironmentVariableWriteResultData),
     ModelsListSummariesResultData(ModelsListSummariesResultData),
     TtsSynthesizeResultData(TtsSynthesizeResultData),
+    TtsSpeakResultData(TtsSpeakResultData),
     SttTranscribeResultData(SttTranscribeResultData),
     TtsListConfigsResultData(TtsListConfigsResultData),
     TtsGetCurrentConfigIdResultData(TtsGetCurrentConfigIdResultData),
@@ -50,6 +52,7 @@ pub enum ToolResultData {
     FileOperationData(FileOperationData),
     FileApplyResultData(FileApplyResultData),
     StorageRequestResultData(StorageRequestResultData),
+    WebSocketResultData(WebSocketResultData),
     HttpResponseData(HttpResponseData),
     HttpStreamEventData(HttpStreamEventData),
     SystemSettingData(SystemSettingData),
@@ -120,6 +123,7 @@ impl ToolResultData {
             Self::EnvironmentVariableWriteResultData(data) => data.toString(),
             Self::ModelsListSummariesResultData(data) => data.toString(),
             Self::TtsSynthesizeResultData(data) => data.toString(),
+            Self::TtsSpeakResultData(data) => data.toString(),
             Self::SttTranscribeResultData(data) => data.toString(),
             Self::TtsListConfigsResultData(data) => data.toString(),
             Self::TtsGetCurrentConfigIdResultData(data) => data.toString(),
@@ -137,6 +141,7 @@ impl ToolResultData {
             Self::FileOperationData(data) => data.toString(),
             Self::FileApplyResultData(data) => data.toString(),
             Self::StorageRequestResultData(data) => data.toString(),
+            Self::WebSocketResultData(data) => data.toString(),
             Self::HttpResponseData(data) => data.toString(),
             Self::HttpStreamEventData(data) => data.toString(),
             Self::SystemSettingData(data) => data.toString(),
@@ -374,6 +379,8 @@ pub enum TerminalType {
     Powershell,
     #[serde(rename = "bash")]
     Bash,
+    #[serde(rename = "zsh")]
+    Zsh,
     #[serde(rename = "shell")]
     Shell,
 }
@@ -383,6 +390,7 @@ impl TerminalType {
         match self {
             Self::Powershell => "powershell",
             Self::Bash => "bash",
+            Self::Zsh => "zsh",
             Self::Shell => "shell",
         }
     }
@@ -400,6 +408,7 @@ impl TryFrom<&str> for TerminalType {
         match value {
             "powershell" => Ok(Self::Powershell),
             "bash" => Ok(Self::Bash),
+            "zsh" => Ok(Self::Zsh),
             "shell" => Ok(Self::Shell),
             _ => Err(format!("invalid terminal type: {value}")),
         }
@@ -576,6 +585,24 @@ impl TtsSynthesizeResultData {
 pub struct SttTranscribeResultData { pub text: String }
 impl SttTranscribeResultData {
     pub fn toString(&self) -> String { serde_json::to_string(self).expect("STT result serialization failed") }
+}
+
+/// Reports the actual host speech start and the resolved utterance parameters.
+#[derive(Clone, Serialize, Deserialize)]
+#[allow(non_snake_case)]
+#[serde(deny_unknown_fields)]
+pub struct TtsSpeakResultData {
+    pub providerType: String,
+    pub started: bool,
+    pub interrupt: bool,
+    pub speed: f64,
+    pub pitch: f64,
+}
+impl TtsSpeakResultData {
+    /// Formats the concrete tool fields for the common text result path.
+    pub fn toString(&self) -> String {
+        serde_json::to_string(self).expect("TtsSpeakResultData serialization failed")
+    }
 }
 
 /// Returns the complete configured speech records.
@@ -854,6 +881,8 @@ pub enum StorageRequestResultData {
     List {
         entries: Vec<StorageKeyValueEntry>,
     },
+    #[serde(rename = "changes")]
+    Changes { page: operit_host_api::PluginStorage::StorageChangePage },
     #[serde(rename = "commit")]
     Commit {
         version: String,
@@ -885,6 +914,7 @@ impl From<StorageResponse> for StorageRequestResultData {
                 entries: entries.into_iter().map(JsNullable::from_option).collect(),
             },
             StorageResponse::List(entries) => Self::List { entries },
+            StorageResponse::Changes(page) => Self::Changes { page },
             StorageResponse::Commit(result) => Self::Commit {
                 version: result.version,
             },
@@ -2102,6 +2132,8 @@ impl FileApplyResultData {
             .map(String::as_str)
             .chain(std::iter::once(self.aiDiffInstructions.as_str()))
         {
+            let mut additions = 0;
+            let mut deletions = 0;
             for line in candidate.lines() {
                 let trimmed = line.trim();
                 if trimmed.starts_with("Changes: +")
@@ -2109,6 +2141,14 @@ impl FileApplyResultData {
                 {
                     return Some(trimmed.to_string());
                 }
+                if line.starts_with('+') && !line.starts_with("+++") {
+                    additions += 1;
+                } else if line.starts_with('-') && !line.starts_with("---") {
+                    deletions += 1;
+                }
+            }
+            if additions > 0 || deletions > 0 {
+                return Some(format!("Changes: +{additions} -{deletions} lines"));
             }
         }
         None
@@ -3017,4 +3057,55 @@ pub enum TerminalObservationResultData {
     Open { handle: String },
     Next { event: JsNullable<super::system::TerminalExecEvent> },
     Close {},
+}
+
+/// Reports exactly the requested WebSocket operation.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum WebSocketResultData {
+    #[serde(rename = "open")]
+    Open { handle: String },
+    #[serde(rename = "read")]
+    Read { events: Vec<NetWebSocketEvent> },
+    #[serde(rename = "send")]
+    Send,
+    #[serde(rename = "close")]
+    Close,
+}
+
+impl WebSocketResultData {
+    /// Formats the concrete operation without hiding serialization errors.
+    #[allow(non_snake_case)]
+    pub fn toString(&self) -> String {
+        match self {
+            Self::Open { handle } => format!("WebSocket opened: {handle}"),
+            Self::Read { events } => format!("WebSocket events: {}", events.len()),
+            Self::Send => "WebSocket message sent".into(),
+            Self::Close => "WebSocket closed".into(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod terminal_type_tests {
+    use super::TerminalType;
+
+    #[test]
+    fn terminal_type_literals_round_trip() {
+        for literal in ["powershell", "bash", "zsh", "shell"] {
+            let terminal_type = TerminalType::try_from(literal).unwrap();
+            assert_eq!(terminal_type.as_str(), literal);
+            assert_eq!(terminal_type.to_string(), literal);
+            let json = serde_json::to_string(&terminal_type).unwrap();
+            assert_eq!(json, format!("\"{literal}\""));
+            let decoded: TerminalType = serde_json::from_str(&json).unwrap();
+            assert_eq!(decoded.as_str(), literal);
+        }
+    }
+
+    #[test]
+    fn unknown_terminal_type_is_rejected() {
+        assert!(TerminalType::try_from("unknown-shell").is_err());
+        assert!(serde_json::from_str::<TerminalType>("\"unknown-shell\"").is_err());
+    }
 }

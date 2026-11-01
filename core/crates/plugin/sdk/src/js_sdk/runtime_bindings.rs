@@ -76,6 +76,7 @@ pub struct JsToolApiVariant {
 /// Contains every active JavaScript Tools method binding.
 #[rustfmt::skip]
 pub const JS_TOOL_BINDINGS: &[JsToolBinding] = &[
+    JsToolBinding { namespace: "Net", method: "webSocket", target: BuiltinToolName::WebSocket, strict_arguments: true, facade: JsToolFacade::Promise, fixed_parameters: &[] },
     JsToolBinding { namespace: "Chat", method: "agentStatus", target: BuiltinToolName::AgentStatus, strict_arguments: false, facade: JsToolFacade::Promise, fixed_parameters: &[] },
     JsToolBinding { namespace: "Chat", method: "createNew", target: BuiltinToolName::CreateNewChat, strict_arguments: false, facade: JsToolFacade::Promise, fixed_parameters: &[] },
     JsToolBinding { namespace: "Chat", method: "deleteChat", target: BuiltinToolName::DeleteChat, strict_arguments: false, facade: JsToolFacade::Promise, fixed_parameters: &[] },
@@ -92,6 +93,7 @@ pub const JS_TOOL_BINDINGS: &[JsToolBinding] = &[
     JsToolBinding { namespace: "Chat", method: "updateGroup", target: BuiltinToolName::UpdateChatGroup, strict_arguments: false, facade: JsToolFacade::Promise, fixed_parameters: &[] },
     JsToolBinding { namespace: "Chat", method: "updatePinned", target: BuiltinToolName::UpdateChatPinned, strict_arguments: false, facade: JsToolFacade::Promise, fixed_parameters: &[] },
     JsToolBinding { namespace: "Chat", method: "updateLocked", target: BuiltinToolName::UpdateChatLocked, strict_arguments: false, facade: JsToolFacade::Promise, fixed_parameters: &[] },
+    JsToolBinding { namespace: "Chat", method: "promoteToRoot", target: BuiltinToolName::PromoteChatToRoot, strict_arguments: false, facade: JsToolFacade::Promise, fixed_parameters: &[] },
     JsToolBinding { namespace: "Chat", method: "reorder", target: BuiltinToolName::ReorderChats, strict_arguments: false, facade: JsToolFacade::Promise, fixed_parameters: &[] },
     JsToolBinding { namespace: "Files", method: "apply", target: BuiltinToolName::ApplyFile, strict_arguments: false, facade: JsToolFacade::Promise, fixed_parameters: &[] },
     JsToolBinding { namespace: "Files", method: "copy", target: BuiltinToolName::CopyFile, strict_arguments: false, facade: JsToolFacade::Promise, fixed_parameters: &[] },
@@ -162,6 +164,7 @@ pub const JS_TOOL_BINDINGS: &[JsToolBinding] = &[
     JsToolBinding { namespace: "System", method: "startApp", target: BuiltinToolName::StartApp, strict_arguments: false, facade: JsToolFacade::Promise, fixed_parameters: &[] },
     JsToolBinding { namespace: "System", method: "stopApp", target: BuiltinToolName::StopApp, strict_arguments: false, facade: JsToolFacade::Promise, fixed_parameters: &[] },
     JsToolBinding { namespace: "System", method: "toast", target: BuiltinToolName::Toast, strict_arguments: false, facade: JsToolFacade::Promise, fixed_parameters: &[] },
+    JsToolBinding { namespace: "System", method: "setClipboardText", target: BuiltinToolName::SetClipboardText, strict_arguments: false, facade: JsToolFacade::Promise, fixed_parameters: &[] },
     JsToolBinding { namespace: "System", method: "uninstallApp", target: BuiltinToolName::UninstallApp, strict_arguments: false, facade: JsToolFacade::Promise, fixed_parameters: &[] },
     JsToolBinding { namespace: "System", method: "usePackage", target: BuiltinToolName::UsePackage, strict_arguments: false, facade: JsToolFacade::Promise, fixed_parameters: &[] },
     JsToolBinding { namespace: "System.bluetooth", method: "accept", target: BuiltinToolName::BluetoothAccept, strict_arguments: false, facade: JsToolFacade::Promise, fixed_parameters: &[] },
@@ -208,6 +211,7 @@ pub const JS_TOOL_BINDINGS: &[JsToolBinding] = &[
     JsToolBinding { namespace: "Chat", method: "deleteExtension", target: BuiltinToolName::ChatDeleteExtension, strict_arguments: true, facade: JsToolFacade::Promise, fixed_parameters: &[] },
     JsToolBinding { namespace: "Models", method: "listSummaries", target: BuiltinToolName::ModelsListSummaries, strict_arguments: true, facade: JsToolFacade::Promise, fixed_parameters: &[] },
     JsToolBinding { namespace: "Tts", method: "synthesize", target: BuiltinToolName::TtsSynthesize, strict_arguments: true, facade: JsToolFacade::Promise, fixed_parameters: &[] },
+    JsToolBinding { namespace: "Tts", method: "speak", target: BuiltinToolName::TtsSpeak, strict_arguments: true, facade: JsToolFacade::Promise, fixed_parameters: &[] },
     JsToolBinding { namespace: "Stt", method: "transcribe", target: BuiltinToolName::SttTranscribe, strict_arguments: true, facade: JsToolFacade::Promise, fixed_parameters: &[] },
     JsToolBinding { namespace: "Tts", method: "listConfigs", target: BuiltinToolName::TtsListConfigs, strict_arguments: true, facade: JsToolFacade::Promise, fixed_parameters: &[] },
     JsToolBinding { namespace: "Tts", method: "getCurrentConfigId", target: BuiltinToolName::TtsGetCurrentConfigId, strict_arguments: true, facade: JsToolFacade::Promise, fixed_parameters: &[] },
@@ -221,6 +225,7 @@ pub const JS_TOOL_BINDINGS: &[JsToolBinding] = &[
 
 /// Contains every versioned implementation applied to generated Tools methods.
 pub const JS_TOOL_API_VARIANTS: &[JsToolApiVariant] = &[
+    JsToolApiVariant { namespace: "Net", method: "webSocket", since: "2.0.0", until: None, arguments: None },
     JsToolApiVariant { namespace: "Storage", method: "request", since: "2.0.0", until: None, arguments: None },
     JsToolApiVariant { namespace: "Chat", method: "sendMessage", since: "2.0.0", until: None, arguments: None },
     JsToolApiVariant { namespace: "Chat", method: "sendMessageStreaming", since: "2.0.0", until: None, arguments: None },
@@ -230,6 +235,7 @@ pub const JS_TOOL_API_VARIANTS: &[JsToolApiVariant] = &[
     JsToolApiVariant { namespace: "Chat", method: "deleteExtension", since: "2.0.0", until: None, arguments: None },
     JsToolApiVariant { namespace: "Models", method: "listSummaries", since: "2.0.0", until: None, arguments: None },
     JsToolApiVariant { namespace: "Tts", method: "synthesize", since: "2.0.0", until: None, arguments: None },
+    JsToolApiVariant { namespace: "Tts", method: "speak", since: "2.0.0", until: None, arguments: None },
     JsToolApiVariant { namespace: "Stt", method: "transcribe", since: "2.0.0", until: None, arguments: None },
     JsToolApiVariant { namespace: "Tts", method: "listConfigs", since: "2.0.0", until: None, arguments: None },
     JsToolApiVariant { namespace: "Tts", method: "getCurrentConfigId", since: "2.0.0", until: None, arguments: None },

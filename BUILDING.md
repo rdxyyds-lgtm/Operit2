@@ -255,6 +255,51 @@ the Fedora `/usr/aarch64-redhat-linux/sys-root/fc43` sysroot. The build release 
 the sysroot's `limits.h` while compiling C dependencies because Fedora's cross compiler
 is built without target headers.
 
+## Debian 12 Linux CLI Build Container
+
+`build_cli_linux_debian12.py` builds the Linux CLI inside a Debian 12
+container. Binaries link against Debian 12's glibc (2.36) and require the
+GCC 12 C++ runtime (`GLIBCXX_3.4.30`), so they run on Debian 12, Ubuntu
+22.04, and newer distributions that reject binaries built on newer hosts
+(`GLIBC_2.xx not found`). Packaging, installer files, embedded plugin
+assets, and artifact naming match `build_cli_linux.py`; the release-standard
+x86_64 musl build stays available there. The driver rejects a packaged
+binary that references glibc symbols newer than 2.36.
+
+Prerequisites: `podman` (rootless, preferred) or `docker`. The image is
+provisioned by running `containers/debian12/image-setup.sh` in a scratch
+container and committing it, so kernels without the overlayfs module (where
+`podman build` cannot mount its build context) are supported; container
+storage itself uses the btrfs driver on btrfs filesystems. When podman's
+default storage configuration is unusable, the driver falls back to
+`CONTAINERS_STORAGE_CONF=~/.config/containers/storage.conf` (set
+`driver = "btrfs"` there on btrfs hosts).
+
+```bash
+# Host architecture; use --arches all for x86_64 + aarch64
+python3 tools/build_scripts/build_cli_linux_debian12.py
+
+# On a restricted network, point the first image build at reachable mirrors
+# and export rustup mirror variables for the container:
+python3 tools/build_scripts/build_cli_linux_debian12.py \
+  --base-image docker.m.daocloud.io/library/debian:12 \
+  --apt-mirror mirrors.ustc.edu.cn \
+  --rebuild-image
+export RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rust-static
+export RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rust-static/rustup
+# Slow npm downloads: forward a registry mirror into the container.
+python3 tools/build_scripts/build_cli_linux_debian12.py \
+  --env npm_config_registry=https://registry.npmmirror.com
+```
+
+Rust is not baked into the image. The driver provisions rustup (toolchain
+version from `RUST_TOOLCHAIN_VERSION`, defaulting to the release-pinned
+1.95.0), the cargo cache, and the pnpm store under the git-ignored
+`tools/release/work/debian12/`, so image rebuilds do not re-download the
+toolchain or crates. The aarch64 target cross-compiles with
+`gcc-aarch64-linux-gnu` and needs no additional sysroot. `--shell` opens the
+container with the same mounts for debugging.
+
 ## Local CLI Checks
 
 Run from the repository root.
@@ -506,9 +551,11 @@ fvm dart pub get --enforce-lockfile
 
 `lib/core/proxy/generated/*.g.dart` is generated at build time and gitignored.
 The app build scripts (`build_flutter_android.py`, `build_flutter_ios.py`,
-`build_flutter_macos.py`) regenerate it before `pub get`. When you invoke
-`flutter build`, `flutter analyze`, or `fvm dart pub get` outside those scripts
-on a clean checkout, generate it first, or Dart analysis fails with
+`build_flutter_macos.py`) regenerate it before `pub get`. Direct Windows and
+macOS Flutter builds also build the Rust bridge before Flutter assembles Dart,
+so `flutter run -d macos` and `flutter build macos` generate the proxy automatically.
+For `flutter analyze`, `fvm dart pub get`, or other platform builds outside those
+scripts on a clean checkout, generate it first to avoid
 `uri_has_not_been_generated` errors:
 
 ```powershell
@@ -576,6 +623,13 @@ provide implicitly:
    place that package the same way or point the Gradle task at a full LLVM
    install before the daemon starts. Without it the bridge build fails with
    "Unable to find libclang".
+6. **Source-built V8**. The bridge links V8 for the JavaScript runtime, and
+   rusty_v8 publishes no prebuilt Android artifacts. The Gradle build runs
+   `tools/build_scripts/prepare_android_v8.py` automatically; the first build
+   takes substantially longer and needs an NDK r23+ installation (detected from
+   `OPERIT_ANDROID_V8_NDK`, `ANDROID_NDK_HOME`, `$ANDROID_HOME/ndk` or
+   `~/Android/ndk`) plus libclang 21.1+ for the bindings generation — the same
+   `libclang.dll` as item 5 works. See `tools/build_scripts/README.md`.
 
 With the prerequisites in place:
 
@@ -607,6 +661,11 @@ install `libclang.so`; set `OPERIT_LIBCLANG_DIR` to override it when libclang
 lives elsewhere. All other prerequisites are shared with the Windows list above:
 host C compiler, pnpm 10.7.0 via corepack, Web Access bundle, plugin packaging,
 and the Android runtime (rootfs) artifacts.
+
+The source-built V8 from item 6 also applies here: install libclang 21.1+ and
+`ld.lld` (Debian/Ubuntu: `apt install llvm-21-dev lld`) and make sure an NDK
+r23+ is discoverable (`~/Android/ndk`, `$ANDROID_HOME/ndk` or
+`ANDROID_NDK_HOME`); the host compiler is fetched automatically.
 
 ```bash
 python tools/build_scripts/build_flutter_android.py --build-name 2.0.0 --build-number 11

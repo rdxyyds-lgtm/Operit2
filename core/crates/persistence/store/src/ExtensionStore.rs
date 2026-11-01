@@ -45,6 +45,13 @@ pub struct ExtensionRecord {
     pub files: BTreeMap<String, String>,
 }
 
+/// Returns the canonical installation owner and its persisted environment variables.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PackageEnvironment {
+    pub ownerId: String,
+    pub variables: BTreeMap<String, String>,
+}
+
 /// Stores independent extension entities through the cross-platform runtime storage host.
 #[derive(Clone)]
 pub struct ExtensionStore {
@@ -405,6 +412,10 @@ impl ExtensionStore {
             }
             (Some(record), None) | (None, Some(record)) => record,
             (None, None) => {
+                let local = recordPath("package", id, "device")?.replace("/records/", "/uninstalled/");
+                if self.storage.exists(&local).map_err(|e| e.to_string())? {
+                    return Ok(false);
+                }
                 let path = recordPath("package", id, "space")?;
                 return Ok(!RuntimeFileSyncStore::new(self.storage.clone(), RUNTIME_SYNC_DIR_PATH).hasSnapshot(&path)?);
             }
@@ -608,14 +619,12 @@ impl ExtensionStore {
         if record.kind != kind || record.id != id {
             return Err("Deletion journal identity mismatch".into());
         }
-        if record.kind == "package" && record.settings["builtin"] == true {
-            return Err("Built-in packages cannot be deleted".into());
-        }
         if !resuming {
             record.files = self.snapshot(&record)?;
             self.storage.writeBytes(&journal, &serde_json::to_vec(&record).map_err(|e| e.to_string())?)
                 .map_err(|e| e.to_string())?;
         }
+        self.retireBuiltinPackage(&record)?;
         self.remove(&record)?;
         self.storage.delete(&journal, false).map_err(|e| e.to_string())?;
         notifyCatalogChanged();
@@ -630,10 +639,8 @@ impl ExtensionStore {
             .into_iter()
             .filter(|record| record.id == id)
             .collect::<Vec<_>>();
-        if records.iter().any(|record| record.settings["builtin"] == true) {
-            return Err("Built-in packages cannot be deleted".into());
-        }
         for record in &records {
+            self.retireBuiltinPackage(record)?;
             self.remove(record)?;
         }
         if !records.is_empty() {
@@ -642,11 +649,156 @@ impl ExtensionStore {
         Ok(!records.is_empty())
     }
 
+    /// Records explicit device-local uninstallation so bundled scans cannot recreate the package.
+    fn retireBuiltinPackage(&self, record: &ExtensionRecord) -> Result<(), String> {
+        if record.kind == "package" && record.scope == "device" && record.settings["builtin"] == true {
+            let path = recordPath("package", &record.id, "device")?.replace("/records/", "/uninstalled/");
+            self.storage.writeBytes(&path, b"true").map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    }
+
     /// Resolves a known package scope before registration without requiring an installation record.
     pub fn configPathForScope(id: &str, scope: &str) -> Result<String, String> {
         Self::root("package", scope)?;
         let name = operit_util::OperitPaths::pluginConfigDirName(id)?;
         Ok(format!("runtime/extensions/{scope}/plugins/configs/{name}"))
+    }
+
+    /// Reads environment variables from the installation owning a package or subpackage.
+    pub fn packageEnvironment(&self, packageName: &str) -> Result<PackageEnvironment, String> {
+        let owner = self.packageOwner(packageName)?;
+        Ok(PackageEnvironment {
+            variables: self.packageEnvironmentForScope(&owner.id, &owner.scope)?,
+            ownerId: owner.id,
+        })
+    }
+
+    /// Reads a package environment in the explicit installation scope, including registration.
+    pub fn packageEnvironmentForScope(
+        &self,
+        id: &str,
+        scope: &str,
+    ) -> Result<BTreeMap<String, String>, String> {
+        let path = format!("{}/environment.json", Self::configPathForScope(id, scope)?);
+        if !self
+            .storage
+            .exists(&path)
+            .map_err(|error| error.to_string())?
+        {
+            return Ok(BTreeMap::new());
+        }
+        serde_json::from_slice(
+            &self
+                .storage
+                .readBytes(&path)
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| format!("Invalid package environment for {id}: {error}"))
+    }
+
+    /// Applies only the edited keys to the environment owned by a package installation.
+    pub fn editPackageEnvironment(
+        &self,
+        packageName: &str,
+        changes: BTreeMap<String, Option<String>>,
+    ) -> Result<(), String> {
+        let owner = self.packageOwner(packageName)?;
+        self.editPackageEnvironmentForScope(&owner.id, &owner.scope, changes)
+    }
+
+    /// Persists an environment edit through the installation's existing file synchronization policy.
+    pub fn editPackageEnvironmentForScope(
+        &self,
+        id: &str,
+        scope: &str,
+        changes: BTreeMap<String, Option<String>>,
+    ) -> Result<(), String> {
+        let mut variables = self.packageEnvironmentForScope(id, scope)?;
+        let original = variables.clone();
+        for (key, value) in changes {
+            if key.is_empty() || key.trim() != key {
+                return Err("Environment variable names must be nonempty and trimmed".into());
+            }
+            match value {
+                Some(value) => {
+                    variables.insert(key, value);
+                }
+                None => {
+                    variables.remove(&key);
+                }
+            }
+        }
+        if variables == original {
+            return Ok(());
+        }
+        let path = format!("{}/environment.json", Self::configPathForScope(id, scope)?);
+        let bytes = serde_json::to_vec(&variables).map_err(|error| error.to_string())?;
+        match scope {
+            "space" => RuntimeFileSyncStore::new(self.storage.clone(), RUNTIME_SYNC_DIR_PATH)
+                .writeBytes(&path, &bytes),
+            "device" => self
+                .storage
+                .writeBytesAtomically(&path, &bytes)
+                .map_err(|error| error.to_string()),
+            _ => Err("Unknown extension scope".into()),
+        }
+    }
+
+    /// Imports declared legacy values once as an initial configuration below explicit Space edits.
+    pub fn initializePackageEnvironment(
+        &self,
+        packageName: &str,
+        declaredNames: &[String],
+    ) -> Result<(), String> {
+        let owner = self.packageOwner(packageName)?;
+        self.initializePackageEnvironmentForScope(&owner.id, &owner.scope, declaredNames)
+    }
+
+    /// Prepares declared legacy values before registration evaluates the package's main module.
+    pub fn initializePackageEnvironmentForScope(
+        &self,
+        id: &str,
+        scope: &str,
+        declaredNames: &[String],
+    ) -> Result<(), String> {
+        let path = format!("{}/environment.json", Self::configPathForScope(id, scope)?);
+        if self
+            .storage
+            .exists(&path)
+            .map_err(|error| error.to_string())?
+        {
+            return Ok(());
+        }
+        let mut variables = BTreeMap::new();
+        if !declaredNames.is_empty() {
+            let legacy = CoreNodeStateStore::newWithStorage(
+                self.storage.clone(),
+                operit_util::RuntimeStorageLayout::LEGACY_ENV_PREFERENCES_PATH,
+            )
+            .data()
+            .map_err(|error| error.to_string())?;
+            for name in declaredNames {
+                if let Some(value) = legacy
+                    .getTyped::<String>(&stringPreferencesKey(name))
+                    .map_err(|error| error.to_string())?
+                {
+                    if !value.is_empty() {
+                        variables.insert(name.clone(), value);
+                    }
+                }
+            }
+        }
+        let bytes = serde_json::to_vec(&variables).map_err(|error| error.to_string())?;
+        match scope {
+            "space" => RuntimeFileSyncStore::new(self.storage.clone(), RUNTIME_SYNC_DIR_PATH)
+                .initializeBytes(&path, &bytes),
+            "device" => self
+                .storage
+                .writeBytesAtomically(&path, &bytes)
+                .map_err(|error| error.to_string()),
+            _ => Err("Unknown extension scope".into()),
+        }
     }
 
     /// Resolves persistent plugin data from its explicit data scope rather than installation metadata.
@@ -673,9 +825,7 @@ impl ExtensionStore {
 
     /// Reads the retired settings layout only while migrating a version-zero descriptor.
     fn legacySettingsStore(&self, record: &ExtensionRecord) -> Result<PreferencesDataStore, String> {
-        let path = recordPath(&record.kind, &record.id, &record.scope)?
-            .replace("/records/", "/settings/")
-            .replace(".json", ".preferences.json");
+        let path = legacySettingsPath(&record.kind, &record.id, &record.scope)?;
         let store = if record.scope == "space" {
             PreferencesDataStore::newWithStorage(self.storage.clone(), path)
         } else {
@@ -1062,7 +1212,7 @@ impl ExtensionStore {
 }
 
 /// Creates a collision-resistant entity path without deriving filesystem paths from display names.
-fn recordPath(kind: &str, id: &str, scope: &str) -> Result<String, String> {
+pub fn recordPath(kind: &str, id: &str, scope: &str) -> Result<String, String> {
     ExtensionStore::root(kind, scope)?;
     if id.trim().is_empty() {
         return Err("Extension id cannot be empty".to_string());
@@ -1071,6 +1221,24 @@ fn recordPath(kind: &str, id: &str, scope: &str) -> Result<String, String> {
         "runtime/extensions/{scope}/records/{kind}-{:x}.json",
         Sha256::digest(id.as_bytes())
     ))
+}
+
+/// Resolves the retired settings namespace through the extension owner's storage scope.
+pub fn legacySettingsDirectory(scope: &str) -> Result<String, String> {
+    use operit_util::RuntimeStorageLayout::{EXTENSIONS_DEVICE, EXTENSIONS_SPACE};
+    let root = match scope {
+        "space" => EXTENSIONS_SPACE.path,
+        "device" => EXTENSIONS_DEVICE.path,
+        _ => return Err(format!("Unknown extension scope: {scope}")),
+    };
+    Ok(format!("{root}/settings"))
+}
+
+/// Resolves legacy settings with the exact same identity encoding as its owning record.
+pub fn legacySettingsPath(kind: &str, id: &str, scope: &str) -> Result<String, String> {
+    Ok(recordPath(kind, id, scope)?
+        .replace("/records/", "/settings/")
+        .replace(".json", ".preferences.json"))
 }
 
 /// Accepts only the two explicit installation scopes.

@@ -4,7 +4,8 @@ import type { Catalog } from "./catalog";
 import type { Chat } from "./chat";
 import type { JsonObject } from "./core";
 import type { Models } from "./models";
-import type { StorageKeyValueEntry, StoragePreferencesEdit, StoragePreferencesSnapshot, StorageSqlExecutionResult, StorageSqlRow, StorageValueEntry } from "./storage.generated";
+import type { Net } from "./network";
+import type { StorageChangePage, StorageKeyValueEntry, StoragePreferencesEdit, StoragePreferencesSnapshot, StorageSqlExecutionResult, StorageSqlRow, StorageValueEntry } from "./storage.generated";
 import type { TerminalExecEvent } from "./system";
 import type { Theme } from "./theme";
 import type { Tts } from "./tts";
@@ -19,7 +20,7 @@ export interface JsonResultData {
 /**
  * Contains every concrete payload returned by the built-in tool runtime.
  */
-export type ToolResultData = JsonResultData | EdgePortResultData | BooleanResultData | StringResultData | SleepResultData | EnvironmentVariableReadResultData | EnvironmentVariableWriteResultData | ModelsListSummariesResultData | TtsSynthesizeResultData | SttTranscribeResultData | TtsListConfigsResultData | TtsGetCurrentConfigIdResultData | TtsSetCurrentConfigIdResultData | ThemeListConfigsResultData | ThemeApplyConfigResultData | IntResultData | BinaryResultData | FilePartContentData | DirectoryListingData | FileContentData | BinaryFileContentData | FileExistsData | FileInfoData | FileOperationData | FileApplyResultData | StorageRequestResultData | HttpResponseData | HttpStreamEventData | SystemSettingData | AppOperationData | AppListData | AppUsageTimeResultData | NotificationData | LocationData | DeviceInfoResultData | ChatServiceStartResultData | ChatCreationResultData | ChatListResultData | ChatFindResultData | AgentStatusResultData | ChatSwitchResultData | ChatTitleUpdateResultData | ChatDeleteResultData | MessageSendResultData | ChatSendMessageResultData | ChatObservationResultData | ChatCancelResultData | ChatReadExtensionResultData | ChatWriteExtensionResultData | ChatDeleteExtensionResultData | ChatCallResultData | ChatMessagesResultData | VisitWebResultData | TerminalInfoResultData | TerminalCommandResultData | TerminalStreamEventData | TerminalObservationResultData | HiddenTerminalCommandResultData | TerminalSessionCreationResultData | TerminalSessionCloseResultData | TerminalSessionScreenResultData | MusicPlaybackResultData | BluetoothStateData | BluetoothBondedDevicesData | BluetoothScanResultData | BluetoothSessionData | BluetoothTransferData | BluetoothReadData | BluetoothBleServicesData | BluetoothBleNotificationData | CatalogReadToolSourcesResultData | MediaRegistrationResultData | FindFilesResultData | GrepResultData;
+export type ToolResultData = JsonResultData | EdgePortResultData | BooleanResultData | StringResultData | SleepResultData | EnvironmentVariableReadResultData | EnvironmentVariableWriteResultData | ModelsListSummariesResultData | TtsSynthesizeResultData | TtsSpeakResultData | SttTranscribeResultData | TtsListConfigsResultData | TtsGetCurrentConfigIdResultData | TtsSetCurrentConfigIdResultData | ThemeListConfigsResultData | ThemeApplyConfigResultData | IntResultData | BinaryResultData | FilePartContentData | DirectoryListingData | FileContentData | BinaryFileContentData | FileExistsData | FileInfoData | FileOperationData | FileApplyResultData | StorageRequestResultData | WebSocketResultData | HttpResponseData | HttpStreamEventData | SystemSettingData | AppOperationData | AppListData | AppUsageTimeResultData | NotificationData | LocationData | DeviceInfoResultData | ChatServiceStartResultData | ChatCreationResultData | ChatListResultData | ChatFindResultData | AgentStatusResultData | ChatSwitchResultData | ChatTitleUpdateResultData | ChatDeleteResultData | MessageSendResultData | ChatSendMessageResultData | ChatObservationResultData | ChatCancelResultData | ChatReadExtensionResultData | ChatWriteExtensionResultData | ChatDeleteExtensionResultData | ChatCallResultData | ChatMessagesResultData | VisitWebResultData | TerminalInfoResultData | TerminalCommandResultData | TerminalStreamEventData | TerminalObservationResultData | HiddenTerminalCommandResultData | TerminalSessionCreationResultData | TerminalSessionCloseResultData | TerminalSessionScreenResultData | MusicPlaybackResultData | BluetoothStateData | BluetoothBondedDevicesData | BluetoothScanResultData | BluetoothSessionData | BluetoothTransferData | BluetoothReadData | BluetoothBleServicesData | BluetoothBleNotificationData | CatalogReadToolSourcesResultData | MediaRegistrationResultData | FindFilesResultData | GrepResultData;
 
 /**
  * Captures the UI node and Android surface reached when an automation run finishes.
@@ -140,7 +141,7 @@ export interface UIActionResultData {
 /**
  * Identifies the command interpreter backing a terminal session.
  */
-export type TerminalType = "powershell" | "bash" | "shell";
+export type TerminalType = "powershell" | "bash" | "zsh" | "shell";
 
 /**
  * Identifies the concrete terminal implementation selected by a host.
@@ -268,6 +269,21 @@ export interface TtsSynthesizeResultData {
 
 export interface SttTranscribeResultData {
   text: string;
+  toString(): string;
+}
+
+/**
+ * Reports the actual host speech start and the resolved utterance parameters.
+ */
+export interface TtsSpeakResultData {
+  providerType: string;
+  started: boolean;
+  interrupt: boolean;
+  speed: number;
+  pitch: number;
+  /**
+   * Formats the concrete tool fields for the common text result path.
+   */
   toString(): string;
 }
 
@@ -494,7 +510,7 @@ export interface FileApplyResultData {
 /**
  * Returns the concrete result fields of the selected Storage tool operation.
  */
-export type StorageRequestResultData = { op: "open"; handle: string; path: string; } | { op: "preferences_data"; snapshot: StoragePreferencesSnapshot; } | { op: "preferences_begin_edit"; edit: StoragePreferencesEdit; } | { op: "preferences_finish_edit"; snapshot: StoragePreferencesSnapshot; } | { op: "preferences_cancel_edit"; } | { op: "close"; } | { op: "query"; rows: StorageSqlRow[]; } | { op: "execute"; results: StorageSqlExecutionResult[]; } | { op: "transaction"; results: StorageSqlExecutionResult[]; } | { op: "define_table"; changed: boolean; } | { op: "get"; entry: StorageValueEntry | null; } | { op: "get_many"; entries: (StorageValueEntry | null)[]; } | { op: "list"; entries: StorageKeyValueEntry[]; } | { op: "commit"; version: string; };
+export type StorageRequestResultData = { op: "open"; handle: string; path: string; } | { op: "preferences_data"; snapshot: StoragePreferencesSnapshot; } | { op: "preferences_begin_edit"; edit: StoragePreferencesEdit; } | { op: "preferences_finish_edit"; snapshot: StoragePreferencesSnapshot; } | { op: "preferences_cancel_edit"; } | { op: "close"; } | { op: "query"; rows: StorageSqlRow[]; } | { op: "execute"; results: StorageSqlExecutionResult[]; } | { op: "transaction"; results: StorageSqlExecutionResult[]; } | { op: "define_table"; changed: boolean; } | { op: "get"; entry: StorageValueEntry | null; } | { op: "get_many"; entries: (StorageValueEntry | null)[]; } | { op: "list"; entries: StorageKeyValueEntry[]; } | { op: "changes"; page: StorageChangePage; } | { op: "commit"; version: string; };
 
 /**
  * Contains an HTTP response status, headers, cookies, media type, and decoded or Base64 body.
@@ -1705,3 +1721,8 @@ export interface EdgePortResultData {
  * Exchanges one scoped terminal execution observation through the common tool transport.
  */
 export type TerminalObservationResultData = { handle: string; } | { event: TerminalExecEvent | null; } | { };
+
+/**
+ * Reports exactly the requested WebSocket operation.
+ */
+export type WebSocketResultData = { op: "open"; handle: string; } | { op: "read"; events: Net.WebSocketEvent[]; } | { op: "send"; } | { op: "close"; };

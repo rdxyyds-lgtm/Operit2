@@ -98,6 +98,12 @@ abstract class AppLocalizations {
     Locale('zh'),
   ];
 
+  /// No description provided for @chatPromoteToRoot.
+  ///
+  /// In en, this message translates to:
+  /// **'Promote to main conversation'**
+  String get chatPromoteToRoot;
+
   /// No description provided for @workspaceUnsavedChangesTitle.
   ///
   /// In en, this message translates to:
@@ -284,6 +290,60 @@ abstract class AppLocalizations {
   /// **'Added to queue'**
   String get chatQueueAdded;
 
+  /// No description provided for @chatSendOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose how to send'**
+  String get chatSendOptions;
+
+  /// No description provided for @chatQueueAddMessageDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Send after the current reply finishes (default)'**
+  String get chatQueueAddMessageDescription;
+
+  /// No description provided for @chatGuideCurrentTurn.
+  ///
+  /// In en, this message translates to:
+  /// **'Guide current conversation'**
+  String get chatGuideCurrentTurn;
+
+  /// No description provided for @chatGuideCurrentTurnDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply in a later model request without interrupting this turn'**
+  String get chatGuideCurrentTurnDescription;
+
+  /// No description provided for @chatInterruptAndSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Interrupt and send'**
+  String get chatInterruptAndSend;
+
+  /// No description provided for @chatInterruptAndSendDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the current reply and send this message now'**
+  String get chatInterruptAndSendDescription;
+
+  /// No description provided for @chatGuidanceAccepted.
+  ///
+  /// In en, this message translates to:
+  /// **'Guidance added for a later model request'**
+  String get chatGuidanceAccepted;
+
+  /// No description provided for @chatGuidanceTextOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Guidance supports text only. Remove attachments and the reply target first.'**
+  String get chatGuidanceTextOnly;
+
+  /// No description provided for @chatQueueWithdrawToEditor.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw to editor'**
+  String get chatQueueWithdrawToEditor;
+
   /// No description provided for @chatPleaseCreateNewChat.
   ///
   /// In en, this message translates to:
@@ -409,6 +469,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Close'**
   String get close;
+
+  /// No description provided for @workspaceCloseOtherTabs.
+  ///
+  /// In en, this message translates to:
+  /// **'Close Others'**
+  String get workspaceCloseOtherTabs;
+
+  /// No description provided for @workspaceCloseTabsToRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Close to the Right'**
+  String get workspaceCloseTabsToRight;
+
+  /// No description provided for @workspaceCloseAllTabs.
+  ///
+  /// In en, this message translates to:
+  /// **'Close All'**
+  String get workspaceCloseAllTabs;
 
   /// No description provided for @commonExpand.
   ///
@@ -596,6 +674,60 @@ abstract class AppLocalizations {
   /// **'{count} results'**
   String messageLocatorResultCount(int count);
 
+  /// No description provided for @messageLocatorSearchMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'Search messages'**
+  String get messageLocatorSearchMessages;
+
+  /// No description provided for @messageLocatorViewFavorites.
+  ///
+  /// In en, this message translates to:
+  /// **'View favorites'**
+  String get messageLocatorViewFavorites;
+
+  /// No description provided for @messageLocatorAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get messageLocatorAll;
+
+  /// No description provided for @messageLocatorFavorites.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites'**
+  String get messageLocatorFavorites;
+
+  /// No description provided for @messageLocatorNoFavorites.
+  ///
+  /// In en, this message translates to:
+  /// **'No favorite messages yet'**
+  String get messageLocatorNoFavorites;
+
+  /// No description provided for @messageLocatorLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load messages. Please try again.'**
+  String get messageLocatorLoadFailed;
+
+  /// No description provided for @messageLocatorFavoriteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not update favorite. Please try again.'**
+  String get messageLocatorFavoriteFailed;
+
+  /// No description provided for @messageLocatorAddFavorite.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorite message'**
+  String get messageLocatorAddFavorite;
+
+  /// No description provided for @messageLocatorRemoveFavorite.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove favorite'**
+  String get messageLocatorRemoveFavorite;
+
   /// No description provided for @messageLocatorNoMatches.
   ///
   /// In en, this message translates to:
@@ -779,7 +911,7 @@ abstract class AppLocalizations {
   /// No description provided for @workspaceUnbindTitle.
   ///
   /// In en, this message translates to:
-  /// **'Unbind workspace'**
+  /// **'Remove project from this chat'**
   String get workspaceUnbindTitle;
 
   /// No description provided for @workspaceUnbindDescription.
@@ -1757,7 +1889,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsCategoryLocalModelsSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Downloads, engines, STT / TTS'**
+  /// **'LLMs, downloads, STT / TTS'**
   String get settingsCategoryLocalModelsSubtitle;
 
   /// No description provided for @settingsCategoryLocalModelsDescription.
@@ -2606,12 +2738,6 @@ abstract class AppLocalizations {
   /// **'SiliconFlow'**
   String get settingsModelProviderTypeSiliconflow;
 
-  /// No description provided for @settingsModelProviderTypeIflow.
-  ///
-  /// In en, this message translates to:
-  /// **'iFlow'**
-  String get settingsModelProviderTypeIflow;
-
   /// No description provided for @settingsModelProviderTypeOpenrouter.
   ///
   /// In en, this message translates to:
@@ -2695,6 +2821,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Local model operation failed: {error}'**
   String localModelsOperationFailed(Object error);
+
+  /// No description provided for @localModelsAddModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Add model'**
+  String get localModelsAddModel;
+
+  /// No description provided for @localModelsFilterDownloads.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads'**
+  String get localModelsFilterDownloads;
+
+  /// No description provided for @localModelsAllTypes.
+  ///
+  /// In en, this message translates to:
+  /// **'All types'**
+  String get localModelsAllTypes;
+
+  /// No description provided for @localModelsNoMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching models'**
+  String get localModelsNoMatches;
+
+  /// No description provided for @localModelsResetFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset filters'**
+  String get localModelsResetFilters;
+
+  /// No description provided for @localModelsDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Model details'**
+  String get localModelsDetails;
+
+  /// No description provided for @localModelsMoreActions.
+  ///
+  /// In en, this message translates to:
+  /// **'More actions'**
+  String get localModelsMoreActions;
+
+  /// No description provided for @localModelsResultCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Showing {count} of {total} models'**
+  String localModelsResultCount(int count, int total);
+
+  /// No description provided for @localModelsHubRepositoryTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository'**
+  String get localModelsHubRepositoryTab;
+
+  /// No description provided for @localModelsDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Download failed'**
+  String get localModelsDownloadFailed;
+
+  /// No description provided for @localModelsDownloadPausedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get localModelsDownloadPausedLabel;
 
   /// No description provided for @localModelsCatalog.
   ///
@@ -4052,6 +4244,18 @@ abstract class AppLocalizations {
   /// **'Rename device space'**
   String get settingsRuntimeRenameSpace;
 
+  /// No description provided for @settingsRuntimeResetTransactions.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset transactions'**
+  String get settingsRuntimeResetTransactions;
+
+  /// No description provided for @settingsRuntimeResetTransactionsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync transactions rebuilt from this device’s current content'**
+  String get settingsRuntimeResetTransactionsDone;
+
   /// No description provided for @settingsRuntimeLeaveSpace.
   ///
   /// In en, this message translates to:
@@ -4988,11 +5192,17 @@ abstract class AppLocalizations {
   /// **'Chat display'**
   String get settingsAppearanceChatDisplaySection;
 
-  /// No description provided for @settingsAppearanceMessageStyle.
+  /// No description provided for @settingsAppearanceUserMessageStyle.
   ///
   /// In en, this message translates to:
-  /// **'Message style'**
-  String get settingsAppearanceMessageStyle;
+  /// **'User message style'**
+  String get settingsAppearanceUserMessageStyle;
+
+  /// No description provided for @settingsAppearanceAiMessageStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI message style'**
+  String get settingsAppearanceAiMessageStyle;
 
   /// No description provided for @settingsAppearanceMessageStyleClean.
   ///
@@ -5639,7 +5849,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsDataOpenDetailedStatsDescription.
   ///
   /// In en, this message translates to:
-  /// **'Open daily trends, input/output token changes, heatmap intensity, and usage breakdown by provider, model, and function model.'**
+  /// **'View the usage heatmap and model usage timeline with minute-level zoom.'**
   String get settingsDataOpenDetailedStatsDescription;
 
   /// No description provided for @settingsDataRefreshTokenStats.
@@ -6839,7 +7049,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsPeerPortModeHelp.
   ///
   /// In en, this message translates to:
-  /// **'Fixed mode keeps the entered IP and port for tunnels and port forwarding. A busy fixed port reports an error without changing the address.'**
+  /// **'By default, the system assigns an available port and LAN discovery advertises it. Fixed mode uses the entered listen address and port and reports an error if the port is busy.'**
   String get settingsPeerPortModeHelp;
 
   /// No description provided for @settingsPeerPortMode.
@@ -6851,7 +7061,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsPeerPortModeFixed.
   ///
   /// In en, this message translates to:
-  /// **'Fixed address and port'**
+  /// **'Fixed listen address and port'**
   String get settingsPeerPortModeFixed;
 
   /// No description provided for @settingsPeerPortModeAutomatic.
@@ -6881,7 +7091,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsPeerTransportHelp.
   ///
   /// In en, this message translates to:
-  /// **'Listener transports (multiple selections). HTTP and WebSocket can share a port; TCP cannot share that port with them. Bluetooth requires platform support. Clear all selections and disable discovery to stop listening. Changing settings interrupts existing connections. Disabling discovery alone does not stop direct connections.'**
+  /// **'Listener transports (multiple selections). HTTP, WebSocket and TCP share one listening port and can be combined freely. Bluetooth requires platform support. Clear all selections and disable discovery to stop listening. Changing settings interrupts existing connections. Disabling discovery alone does not stop direct connections.'**
   String get settingsPeerTransportHelp;
 
   /// No description provided for @settingsPeerBindAddress.
@@ -6911,7 +7121,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsPeerBindPortAutomaticHelp.
   ///
   /// In en, this message translates to:
-  /// **'Automatic mode selects a free port starting from this value.'**
+  /// **'The system assigns an available port. The actual port appears after startup.'**
   String get settingsPeerBindPortAutomaticHelp;
 
   /// No description provided for @settingsPeerDiscoveryNeedsTransport.
@@ -6919,12 +7129,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select at least one transport before enabling discovery.'**
   String get settingsPeerDiscoveryNeedsTransport;
-
-  /// No description provided for @settingsPeerPortConflict.
-  ///
-  /// In en, this message translates to:
-  /// **'TCP cannot currently share a listen port with HTTP/WebSocket. Select TCP or HTTP/WebSocket.'**
-  String get settingsPeerPortConflict;
 
   /// No description provided for @settingsPeerAddressRequired.
   ///
@@ -7199,7 +7403,7 @@ abstract class AppLocalizations {
   /// No description provided for @deviceSpaceUpdateEndpointHint.
   ///
   /// In en, this message translates to:
-  /// **'For example ws://192.168.1.20:37195/link'**
+  /// **'e.g. ws://host:port/link or host:port — use the peer\'s current listen port'**
   String get deviceSpaceUpdateEndpointHint;
 
   /// No description provided for @deviceSpaceUpdateEndpointSaved.
@@ -7243,6 +7447,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Nearby devices'**
   String get devicePickerNearby;
+
+  /// No description provided for @devicePickerDiscoveryFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Nearby device discovery failed: {error}'**
+  String devicePickerDiscoveryFailed(String error);
 
   /// No description provided for @devicePickerEmpty.
   ///
@@ -7567,6 +7777,570 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Stop'**
   String get backgroundWorkStop;
+
+  /// No description provided for @localModelsDeviceOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Stored on this device'**
+  String get localModelsDeviceOnly;
+
+  /// No description provided for @localModelsDeviceOnlyDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Weights, download progress and installation records stay on this device and are excluded from Space sync. Chats can route inference to the device with the model.'**
+  String get localModelsDeviceOnlyDescription;
+
+  /// No description provided for @localModelsRunChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Run and configure'**
+  String get localModelsRunChat;
+
+  /// No description provided for @localModelsUseForChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Use for chat'**
+  String get localModelsUseForChat;
+
+  /// No description provided for @localModelsChatActivated.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected as the chat model'**
+  String get localModelsChatActivated;
+
+  /// No description provided for @localModelsPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a prompt'**
+  String get localModelsPrompt;
+
+  /// No description provided for @localModelsGenerate.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate'**
+  String get localModelsGenerate;
+
+  /// No description provided for @localModelsGenerating.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating…'**
+  String get localModelsGenerating;
+
+  /// No description provided for @localModelsThreads.
+  ///
+  /// In en, this message translates to:
+  /// **'CPU threads'**
+  String get localModelsThreads;
+
+  /// No description provided for @localModelsContextSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Context size (tokens)'**
+  String get localModelsContextSize;
+
+  /// No description provided for @localModelsBatchSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Batch size'**
+  String get localModelsBatchSize;
+
+  /// No description provided for @localModelsUnload.
+  ///
+  /// In en, this message translates to:
+  /// **'Unload model'**
+  String get localModelsUnload;
+
+  /// No description provided for @localModelsCpuBackend.
+  ///
+  /// In en, this message translates to:
+  /// **'On-device CPU inference'**
+  String get localModelsCpuBackend;
+
+  /// No description provided for @localModelsLlmDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Download a GGUF model for llama.cpp or an MNN model bundle. After installation, try it here or select it for chat.'**
+  String get localModelsLlmDescription;
+
+  /// No description provided for @localModelsInvalidSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the thread count, context size and batch size.'**
+  String get localModelsInvalidSettings;
+
+  /// No description provided for @localModelsFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All models'**
+  String get localModelsFilterAll;
+
+  /// No description provided for @localModelsFilterInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed only'**
+  String get localModelsFilterInstalled;
+
+  /// No description provided for @localModelsSearchCatalog.
+  ///
+  /// In en, this message translates to:
+  /// **'Search models, tags or engines'**
+  String get localModelsSearchCatalog;
+
+  /// No description provided for @deviceSpaceSyncPeer.
+  ///
+  /// In en, this message translates to:
+  /// **'a space device'**
+  String get deviceSpaceSyncPeer;
+
+  /// No description provided for @deviceSpaceSyncActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing with {device}'**
+  String deviceSpaceSyncActive(String device);
+
+  /// No description provided for @deviceSpaceSyncCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced with {device}'**
+  String deviceSpaceSyncCompleted(String device);
+
+  /// No description provided for @deviceSpaceSyncChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking for changes'**
+  String get deviceSpaceSyncChecking;
+
+  /// No description provided for @deviceSpaceSyncRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'Exchanging records'**
+  String get deviceSpaceSyncRecords;
+
+  /// No description provided for @deviceSpaceSyncRecordProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'{completed} / {total} records · {percent}%'**
+  String deviceSpaceSyncRecordProgress(int completed, int total, int percent);
+
+  /// No description provided for @deviceSpaceSyncPendingCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} records pending application'**
+  String deviceSpaceSyncPendingCount(int count);
+
+  /// No description provided for @deviceSpaceSyncCounting.
+  ///
+  /// In en, this message translates to:
+  /// **'Counting total · {count} records processed'**
+  String deviceSpaceSyncCounting(int count);
+
+  /// No description provided for @deviceSpaceSyncFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Transferring and verifying files'**
+  String get deviceSpaceSyncFiles;
+
+  /// No description provided for @deviceSpaceSyncRetrying.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync interrupted. Retrying automatically.'**
+  String get deviceSpaceSyncRetrying;
+
+  /// No description provided for @deviceSpaceSyncPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Some data is still pending. Retrying automatically.'**
+  String get deviceSpaceSyncPending;
+
+  /// No description provided for @deviceSpaceSyncCurrentFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Current file: {done} / {total}'**
+  String deviceSpaceSyncCurrentFile(String done, String total);
+
+  /// No description provided for @deviceSpaceSyncTransferred.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} records exchanged · {bytes} transferred'**
+  String deviceSpaceSyncTransferred(int count, String bytes);
+
+  /// No description provided for @deviceSpaceSyncBackground.
+  ///
+  /// In en, this message translates to:
+  /// **'You can keep using the app while syncing continues.'**
+  String get deviceSpaceSyncBackground;
+
+  /// No description provided for @runtimeActivityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Background tasks'**
+  String get runtimeActivityTitle;
+
+  /// No description provided for @runtimeActivitySyncing.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing'**
+  String get runtimeActivitySyncing;
+
+  /// No description provided for @runtimeActivitySyncCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync complete'**
+  String get runtimeActivitySyncCompleted;
+
+  /// No description provided for @runtimeActivityWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting to retry'**
+  String get runtimeActivityWaiting;
+
+  /// No description provided for @runtimeActivityExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Show background tasks'**
+  String get runtimeActivityExpand;
+
+  /// No description provided for @runtimeActivityLoadingPackages.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading extensions'**
+  String get runtimeActivityLoadingPackages;
+
+  /// No description provided for @peerQrTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'QR connection'**
+  String get peerQrTitle;
+
+  /// No description provided for @peerQrScan.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan code'**
+  String get peerQrScan;
+
+  /// No description provided for @peerQrShow.
+  ///
+  /// In en, this message translates to:
+  /// **'My code'**
+  String get peerQrShow;
+
+  /// No description provided for @peerQrShowHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan this code on another device to connect to this device.'**
+  String get peerQrShowHint;
+
+  /// No description provided for @peerQrScanHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan the Operit connection code on the other device.'**
+  String get peerQrScanHint;
+
+  /// No description provided for @peerQrTrustHint.
+  ///
+  /// In en, this message translates to:
+  /// **'This QR code is valid for 5 minutes. Share it only with trusted devices. Confirming joins directly; this device automatically approves when it has administrator approval permissions.'**
+  String get peerQrTrustHint;
+
+  /// No description provided for @peerQrConfirmJoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm join'**
+  String get peerQrConfirmJoin;
+
+  /// No description provided for @peerQrConfirmJoinHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Join this device’s space? Confirm to connect and submit the join request without entering a pairing code.'**
+  String get peerQrConfirmJoinHint;
+
+  /// No description provided for @peerQrListenerRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable receiving connections in connection settings and connect to a network first.'**
+  String get peerQrListenerRequired;
+
+  /// No description provided for @peerQrCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy connection info'**
+  String get peerQrCopy;
+
+  /// No description provided for @peerQrCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get peerQrCopied;
+
+  /// No description provided for @peerQrImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import QR image'**
+  String get peerQrImport;
+
+  /// No description provided for @peerQrPaste.
+  ///
+  /// In en, this message translates to:
+  /// **'Or paste connection info'**
+  String get peerQrPaste;
+
+  /// No description provided for @peerQrRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Read connection info'**
+  String get peerQrRead;
+
+  /// No description provided for @peerQrWrongDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'This code belongs to a different device. Scan the code for the selected device.'**
+  String get peerQrWrongDevice;
+
+  /// No description provided for @peerQrImageInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'No QR code could be read. Choose a clear QR image smaller than 16 MB.'**
+  String get peerQrImageInvalid;
+
+  /// No description provided for @peerQrCameraUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera scanning is unavailable. Import a QR image or paste connection info instead.'**
+  String get peerQrCameraUnavailable;
+
+  /// No description provided for @peerQrCameraPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera access is required. Allow it in system settings, or import a QR image.'**
+  String get peerQrCameraPermission;
+
+  /// No description provided for @peerQrDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect device'**
+  String get peerQrDevice;
+
+  /// No description provided for @peerQrScanAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan another code'**
+  String get peerQrScanAgain;
+
+  /// No description provided for @peerQrMethodsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Can’t find the device? Connect with a QR code.'**
+  String get peerQrMethodsHint;
+
+  /// No description provided for @toolParametersLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Parameters'**
+  String get toolParametersLabel;
+
+  /// No description provided for @toolResultLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Result'**
+  String get toolResultLabel;
+
+  /// No description provided for @toolGroupThinkingCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} thinking'**
+  String toolGroupThinkingCount(int count);
+
+  /// No description provided for @toolGroupCallCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} call} other{{count} calls}}'**
+  String toolGroupCallCount(int count);
+
+  /// No description provided for @toolGroupSearchCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} search'**
+  String toolGroupSearchCount(int count);
+
+  /// No description provided for @toolEditedFileCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Edited {count} file} other{Edited {count} files}}'**
+  String toolEditedFileCount(int count);
+
+  /// No description provided for @toolViewChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'View changes'**
+  String get toolViewChanges;
+
+  /// No description provided for @toolViewFileDiff.
+  ///
+  /// In en, this message translates to:
+  /// **'View diff for {fileName}'**
+  String toolViewFileDiff(String fileName);
+
+  /// No description provided for @toolGroupCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get toolGroupCompleted;
+
+  /// No description provided for @toolGroupExecuting.
+  ///
+  /// In en, this message translates to:
+  /// **'Executing'**
+  String get toolGroupExecuting;
+
+  /// No description provided for @settingsDataTimelineTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Model usage over time'**
+  String get settingsDataTimelineTitle;
+
+  /// No description provided for @settingsDataTimelineHint.
+  ///
+  /// In en, this message translates to:
+  /// **'One line per model. Pinch or scroll to zoom, drag to move, and tap to inspect a time bucket.'**
+  String get settingsDataTimelineHint;
+
+  /// No description provided for @settingsDataTimelineHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h'**
+  String settingsDataTimelineHours(int hours);
+
+  /// No description provided for @settingsDataTimelineBucket.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min buckets'**
+  String settingsDataTimelineBucket(int minutes);
+
+  /// No description provided for @settingsDataTimelineSecondsBucket.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds} sec buckets'**
+  String settingsDataTimelineSecondsBucket(int seconds);
+
+  /// No description provided for @settingsDataTimelineEarlier.
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier'**
+  String get settingsDataTimelineEarlier;
+
+  /// No description provided for @settingsDataTimelineLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get settingsDataTimelineLater;
+
+  /// No description provided for @settingsDataTimelineRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent 3h'**
+  String get settingsDataTimelineRecent;
+
+  /// No description provided for @settingsDataTimelineRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Visible time range'**
+  String get settingsDataTimelineRange;
+
+  /// No description provided for @settingsDataTimelineSelectModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a model below to display its usage'**
+  String get settingsDataTimelineSelectModel;
+
+  /// No description provided for @settingsDataTimelineSpend.
+  ///
+  /// In en, this message translates to:
+  /// **'Spending (estimated)'**
+  String get settingsDataTimelineSpend;
+
+  /// No description provided for @settingsDataTimelineCacheRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache hit rate'**
+  String get settingsDataTimelineCacheRate;
+
+  /// No description provided for @settingsDataTimelineSpendHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated using current model prices. Shares the time range above.'**
+  String get settingsDataTimelineSpendHint;
+
+  /// No description provided for @settingsDataTimelineCacheRateHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Cached input / total input per time bucket. Idle periods have no rate.'**
+  String get settingsDataTimelineCacheRateHint;
+
+  /// No description provided for @settingsDataTimelineNoPrices.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching model prices'**
+  String get settingsDataTimelineNoPrices;
+
+  /// No description provided for @settingsDataTimelinePricesFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load model prices. Refresh to retry.'**
+  String get settingsDataTimelinePricesFailed;
+
+  /// No description provided for @settingsDataTimelineUnpriced.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} requests have unknown cost'**
+  String settingsDataTimelineUnpriced(int count);
+
+  /// No description provided for @settingsDataTimelineKnownSpend.
+  ///
+  /// In en, this message translates to:
+  /// **'Known spending (estimated)'**
+  String get settingsDataTimelineKnownSpend;
+
+  /// No description provided for @settingsDataDetailedStatsRangeLastDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 24 hours'**
+  String get settingsDataDetailedStatsRangeLastDay;
+
+  /// No description provided for @settingsDataTimelineAverageInput.
+  ///
+  /// In en, this message translates to:
+  /// **'Average input per request'**
+  String get settingsDataTimelineAverageInput;
+
+  /// No description provided for @settingsDataTimelineAverageInputHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Input tokens / requests per bucket, to spot growing context sizes. Idle periods are gaps.'**
+  String get settingsDataTimelineAverageInputHint;
+
+  /// No description provided for @settingsDataTimelineCacheSavings.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache savings (estimated)'**
+  String get settingsDataTimelineCacheSavings;
+
+  /// No description provided for @settingsDataTimelineCacheSavingsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'At current prices, cached input cost compared with regular input. Per-request billing saves 0; negative values mean a cache surcharge.'**
+  String get settingsDataTimelineCacheSavingsHint;
+
+  /// No description provided for @settingsDataTimelineTokensPerRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'{tokens} tokens / request'**
+  String settingsDataTimelineTokensPerRequest(String tokens);
+
+  /// No description provided for @settingsDataTimelineUnknownSavings.
+  ///
+  /// In en, this message translates to:
+  /// **'Savings unknown for {count} requests'**
+  String settingsDataTimelineUnknownSavings(int count);
 }
 
 class _AppLocalizationsDelegate

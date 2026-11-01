@@ -241,7 +241,7 @@ impl CharacterPluginWriter {
             let schema_version = started["snapshot"]["schemaVersion"].as_u64().ok_or("Preference schema version is missing")? as u32;
             self.request(StorageRequest::PreferencesFinishEdit { handle, token, edits, schema_version })?;
         }
-        if !memory.is_empty() { self.request(StorageRequest::Commit { handle: self.handle.clone(), mutations: memory })?; }
+        if !memory.is_empty() { self.request(StorageRequest::Commit { handle: self.handle.clone(), mutations: memory, guards: Vec::new() })?; }
         Ok(())
     }
 
@@ -399,7 +399,8 @@ impl CharacterPluginWriter {
                 source,
                 json!({"complete":true,"cleanupPaths":data.cleanup_paths,"cleanupComplete":false,"themeTargets":theme_targets}),
             )?,
-        ])
+        ])?;
+        super::CharacterPluginLayout::prepareMetadata(self.storage.clone(),&format!("{}/meta.preferences.json",self.directory))
     }
 }
 
@@ -1475,6 +1476,7 @@ fn cleanupLegacyCharacters(writer: &CharacterPluginWriter) -> Result<(), String>
     }
     let api_preferences =
         crate::data::preferences::ApiPreferences::ApiPreferences::store(writer.storage.clone());
+    api_preferences.data().map_err(|error| error.to_string())?;
     api_preferences
         .try_edit_result(
             |saved| -> Result<(), operit_store::PreferencesDataStore::PreferencesDataStoreError> {
@@ -1564,7 +1566,7 @@ fn cleanupLegacyCharacters(writer: &CharacterPluginWriter) -> Result<(), String>
             .delete(CHARACTER_CARDS_PREFERENCES_PATH, false)
             .map_err(|error| error.to_string())?;
     }
-    Ok(())
+    super::CharacterPluginLayout::prepare(writer.storage.clone())
 }
 
 /// Retains the exact source target and a complete independent theme for restartable adoption.

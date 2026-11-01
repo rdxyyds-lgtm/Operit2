@@ -1,4 +1,3 @@
-// @operit-compose-artifact 2
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -47,21 +46,14 @@ module.exports = __toCommonJS(index_ui_exports);
 
 // src/validation.ts
 function assertObject(value, label) {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) throw new Error(`${label} \u5FC5\u987B\u662F\u5BF9\u8C61`);
+  if (value === null || typeof value !== "object" || Array.isArray(value)) throw new Error(`${label} 必须是对象`);
 }
 function assertString(value, label) {
-  if (typeof value !== "string") throw new Error(`${label} \u5FC5\u987B\u662F\u5B57\u7B26\u4E32`);
-}
-function assertNumber(value, label, min, max) {
-  if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max) throw new Error(`${label} \u5FC5\u987B\u5728 ${min} \u5230 ${max} \u4E4B\u95F4`);
-}
-function assertInteger(value, label, min) {
-  assertNumber(value, label, min, Number.MAX_SAFE_INTEGER);
-  if (!Number.isSafeInteger(value)) throw new Error(`${label} \u5FC5\u987B\u662F\u5B89\u5168\u6574\u6570`);
+  if (typeof value !== "string") throw new Error(`${label} 必须是字符串`);
 }
 function requireId(value, label) {
   assertString(value, label);
-  if (value.trim() === "" || value !== value.trim()) throw new Error(`${label} \u65E0\u6548`);
+  if (value.trim() === "" || value !== value.trim()) throw new Error(`${label} 无效`);
   return value;
 }
 
@@ -111,17 +103,6 @@ function markerObject(value, path) {
   const result = {};
   for (const [key, item] of Object.entries(value)) Object.defineProperty(result, key, { value: markerValue(item, path + "." + key), enumerable: true, configurable: true, writable: true });
   return result;
-}
-function markerVersion(value, path) {
-  if (value.version !== 1) throw new Error("Unsupported " + path + " version");
-}
-function decodeChatMarker(value) {
-  const extension = markerObject(value, "chat extension");
-  markerVersion(extension, "chat marker");
-  const selection2 = requireId(extension.selection, "chat marker selection");
-  parseChatSelection(selection2);
-  if (Object.prototype.hasOwnProperty.call(extension, "groupId")) throw new Error("Conversation membership is owned by plugin files, not chat extension.groupId");
-  return { version: 1, selection: selection2 };
 }
 
 // src/domain.ts
@@ -280,7 +261,7 @@ var format = enumeration("operit", "tavern");
 var memoryQueryRequest = shape({ participantId: required(nonblank), query: required(nonblank), limit: required(nonnegative), snapshotId: required(nullable(nonblank)) });
 var validators = {
   "memory.chunks": shape({ ownerKey: required(owner), memoryId: required(nonblank), query: required(nonblank), count: required(nonnegativeInteger) }),
-  "memory.searchWithOptions": shape({ ownerKey: required(owner), query: required(nonblank), folderPath: required(nullable(text)), relevanceThreshold: required(nonnegative), createdAtStartMs: required(nullable(integer)), createdAtEndMs: required(nullable(integer)) }),
+  "memory.searchWithOptions": shape({ limit: optional(integer), excludeIds: optional(strings), ownerKey: required(owner), query: required(nonblank), folderPath: required(nullable(text)), relevanceThreshold: required(nonnegative), createdAtStartMs: required(nullable(integer)), createdAtEndMs: required(nullable(integer)) }),
   "memory.chat.list": ownerOnly,
   "memory.chat.pruneMissing": ownerOnly,
   "memory.chat.update": shape({ ownerKey: required(owner), chatId: required(nonblank) }),
@@ -290,7 +271,10 @@ var validators = {
   "memory.rebuild.cancel": ownerOnly,
   "memory.embeddings.rebuild": ownerOnly,
   "memory.candidate.enqueue": shape({ chatId: required(nonblank), timestamp: required(integer), variantIndex: required(messageVariant), sourceType: required(enumeration("reply_finalized_auto", "selected_user_message")), ownerKey: required(nullable(owner)) }),
+  "memory.candidates.retryFailed": ownerOnly,
+  "memory.candidates.clearFailed": ownerOnly,
   "chat.configuration.resolve": parseChatConfigurationRequest,
+  "chat.configuration.binding.find": shape({ chatId: required(nonblank) }),
   "chat.configuration.binding.read": shape({ chatId: required(nonblank) }),
   "chat.configuration.binding.write": shape({ chatId: required(nonblank), selection: required(nonblank) }),
   "chat.configuration.binding.delete": shape({ chatId: required(nonblank) }),
@@ -523,1234 +507,11 @@ function createScreenSession(presentation) {
   };
 }
 
-// src/identity.ts
-function uuid() {
-  const bytes = [];
-  for (let index = 0; index < 16; index += 1) bytes.push(Math.floor(Math.random() * 256));
-  bytes[6] = bytes[6] & 15 | 64;
-  bytes[8] = bytes[8] & 63 | 128;
-  const text3 = bytes.map(
-    /** Encodes every byte as two hexadecimal digits. */
-    (byte) => byte.toString(16).padStart(2, "0")
-  ).join("");
-  return text3.slice(0, 8) + "-" + text3.slice(8, 12) + "-" + text3.slice(12, 16) + "-" + text3.slice(16, 20) + "-" + text3.slice(20);
-}
-
-// src/storage/merge.json
-var merge_default = {
-  cards: {
-    version: 1,
-    catalog: {
-      keyPrefix: "record_",
-      keySuffix: "",
-      identityField: "id",
-      nameField: "name",
-      ignoredFields: [
-        "id",
-        "createdAt",
-        "updatedAt"
-      ],
-      retiredKeys: []
-    },
-    references: [
-      {
-        key: {
-          kind: "records",
-          prefix: "record_",
-          suffix: ""
-        },
-        path: [
-          {
-            kind: "field",
-            name: "chatProviderId"
-          }
-        ],
-        target: "runtime/config/preferences/model_configs.preferences.json"
-      },
-      {
-        key: {
-          kind: "records",
-          prefix: "record_",
-          suffix: ""
-        },
-        path: [
-          {
-            kind: "field",
-            name: "ttsConfigId"
-          }
-        ],
-        target: "runtime/config/preferences/tts_configs.preferences.json"
-      },
-      {
-        key: {
-          kind: "records",
-          prefix: "record_",
-          suffix: ""
-        },
-        path: [
-          {
-            kind: "field",
-            name: "themeConfigId"
-          }
-        ],
-        target: "runtime/config/preferences/user_preferences.preferences.json"
-      },
-      {
-        key: {
-          kind: "records",
-          prefix: "record_",
-          suffix: ""
-        },
-        path: [
-          {
-            kind: "field",
-            name: "sharedMemoryId"
-          }
-        ],
-        target: "runtime/plugin_data/space/com.operit.character_cards/stores.preferences.json"
-      },
-      {
-        key: {
-          kind: "records",
-          prefix: "record_",
-          suffix: ""
-        },
-        path: [
-          {
-            kind: "field",
-            name: "attachedTagIds"
-          },
-          {
-            kind: "array_values"
-          }
-        ],
-        target: "runtime/plugin_data/space/com.operit.character_cards/tags.preferences.json"
-      },
-      {
-        key: {
-          kind: "records",
-          prefix: "record_",
-          suffix: ""
-        },
-        path: [
-          {
-            kind: "field",
-            name: "sharedMemoryMounts"
-          },
-          {
-            kind: "array_values"
-          },
-          {
-            kind: "field",
-            name: "sharedMemoryId"
-          }
-        ],
-        target: "runtime/plugin_data/space/com.operit.character_cards/stores.preferences.json"
-      }
-    ],
-    projection: null
-  },
-  groups: {
-    version: 1,
-    catalog: {
-      keyPrefix: "record_",
-      keySuffix: "",
-      identityField: "id",
-      nameField: "name",
-      ignoredFields: [
-        "id",
-        "createdAt",
-        "updatedAt"
-      ],
-      retiredKeys: []
-    },
-    references: [
-      {
-        key: {
-          kind: "records",
-          prefix: "record_",
-          suffix: ""
-        },
-        path: [
-          {
-            kind: "field",
-            name: "themeConfigId"
-          }
-        ],
-        target: "runtime/config/preferences/user_preferences.preferences.json"
-      },
-      {
-        key: {
-          kind: "records",
-          prefix: "record_",
-          suffix: ""
-        },
-        path: [
-          {
-            kind: "field",
-            name: "members"
-          },
-          {
-            kind: "array_values"
-          },
-          {
-            kind: "field",
-            name: "characterCardId"
-          }
-        ],
-        target: "runtime/plugin_data/space/com.operit.character_cards/cards.preferences.json"
-      }
-    ],
-    projection: null
-  },
-  tags: {
-    version: 1,
-    catalog: {
-      keyPrefix: "record_",
-      keySuffix: "",
-      identityField: "id",
-      nameField: "name",
-      ignoredFields: [
-        "id",
-        "createdAt",
-        "updatedAt"
-      ],
-      retiredKeys: []
-    },
-    references: [],
-    projection: null
-  },
-  stores: {
-    version: 1,
-    catalog: {
-      keyPrefix: "record_",
-      keySuffix: "",
-      identityField: "id",
-      nameField: "name",
-      ignoredFields: [
-        "id",
-        "createdAt",
-        "updatedAt"
-      ],
-      retiredKeys: []
-    },
-    references: [],
-    projection: null
-  },
-  conversationGroups: {
-    version: 1,
-    catalog: null,
-    references: [
-      {
-        key: {
-          kind: "records",
-          prefix: "record_",
-          suffix: ""
-        },
-        path: [
-          {
-            kind: "field",
-            name: "ownerSelection"
-          },
-          {
-            kind: "identity",
-            prefix: "card:",
-            suffix: ""
-          }
-        ],
-        target: "runtime/plugin_data/space/com.operit.character_cards/cards.preferences.json"
-      },
-      {
-        key: {
-          kind: "records",
-          prefix: "record_",
-          suffix: ""
-        },
-        path: [
-          {
-            kind: "field",
-            name: "ownerSelection"
-          },
-          {
-            kind: "identity",
-            prefix: "group:",
-            suffix: ""
-          }
-        ],
-        target: "runtime/plugin_data/space/com.operit.character_cards/groups.preferences.json"
-      }
-    ],
-    projection: null
-  },
-  meta: {
-    version: 1,
-    catalog: null,
-    references: [
-      {
-        key: {
-          kind: "exact",
-          key: "state"
-        },
-        path: [
-          {
-            kind: "field",
-            name: "active"
-          },
-          {
-            kind: "variant",
-            name: "CharacterCard"
-          },
-          {
-            kind: "field",
-            name: "id"
-          }
-        ],
-        target: "runtime/plugin_data/space/com.operit.character_cards/cards.preferences.json"
-      },
-      {
-        key: {
-          kind: "exact",
-          key: "state"
-        },
-        path: [
-          {
-            kind: "field",
-            name: "active"
-          },
-          {
-            kind: "variant",
-            name: "CharacterGroup"
-          },
-          {
-            kind: "field",
-            name: "id"
-          }
-        ],
-        target: "runtime/plugin_data/space/com.operit.character_cards/groups.preferences.json"
-      }
-    ],
-    projection: null
-  },
-  chats: {
-    version: 1,
-    catalog: null,
-    references: [
-      {
-        key: {
-          kind: "records",
-          prefix: "binding_",
-          suffix: ""
-        },
-        path: [
-          {
-            kind: "field",
-            name: "selection"
-          },
-          {
-            kind: "identity",
-            prefix: "card:",
-            suffix: ""
-          }
-        ],
-        target: "runtime/plugin_data/space/com.operit.character_cards/cards.preferences.json"
-      },
-      {
-        key: {
-          kind: "records",
-          prefix: "draft_",
-          suffix: ""
-        },
-        path: [
-          {
-            kind: "field",
-            name: "selection"
-          },
-          {
-            kind: "identity",
-            prefix: "card:",
-            suffix: ""
-          }
-        ],
-        target: "runtime/plugin_data/space/com.operit.character_cards/cards.preferences.json"
-      },
-      {
-        key: {
-          kind: "records",
-          prefix: "binding_",
-          suffix: ""
-        },
-        path: [
-          {
-            kind: "field",
-            name: "selection"
-          },
-          {
-            kind: "identity",
-            prefix: "group:",
-            suffix: ""
-          }
-        ],
-        target: "runtime/plugin_data/space/com.operit.character_cards/groups.preferences.json"
-      },
-      {
-        key: {
-          kind: "records",
-          prefix: "draft_",
-          suffix: ""
-        },
-        path: [
-          {
-            kind: "field",
-            name: "selection"
-          },
-          {
-            kind: "identity",
-            prefix: "group:",
-            suffix: ""
-          }
-        ],
-        target: "runtime/plugin_data/space/com.operit.character_cards/groups.preferences.json"
-      }
-    ],
-    projection: null
-  }
-};
-
-// src/storage/state.ts
-function userDocumentPath(ownerKey) {
-  return "owners/" + encodeURIComponent(ownerKey) + "/USER.md";
-}
-
-// src/storage/records.ts
-var ownerCollections = [
-  "memories",
-  "links",
-  "chunks",
-  "candidates",
-  "embeddings"
-];
-function clone(value) {
-  if (Array.isArray(value)) return value.map(clone);
-  if (value !== null && typeof value === "object")
-    return Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [key, clone(item)])
-    );
-  return value;
-}
-function equal(left, right) {
-  if (left === right) return true;
-  if (left === null || right === null || typeof left !== "object" || typeof right !== "object")
-    return false;
-  const keys = Object.keys(left), other = Object.keys(right);
-  return Array.isArray(left) === Array.isArray(right) && keys.length === other.length && keys.every(
-    (key) => Object.prototype.hasOwnProperty.call(right, key) && equal(
-      left[key],
-      right[key]
-    )
-  );
-}
-function recordKey(value) {
-  assertObject(value, "stored record");
-  return requireId(value.id, "stored record id");
-}
-function storedValue(record2) {
-  return record2;
-}
-function records(state) {
-  const result = [];
-  for (const collection of [
-    "cards",
-    "groups",
-    "tags",
-    "stores",
-    "conversationGroups"
-  ]) {
-    for (const record2 of state[collection])
-      result.push({
-        collection,
-        key: record2.id,
-        value: storedValue(record2),
-        version: null
-      });
-  }
-  for (const owner2 of state.owners) {
-    const { memories, links, chunks, candidates, embeddings, ...metadata } = owner2;
-    result.push({
-      collection: "owners",
-      key: owner2.ownerKey,
-      value: storedValue(metadata),
-      version: null
-    });
-    for (const collection of ownerCollections)
-      for (const record2 of owner2[collection])
-        result.push({
-          collection,
-          key: owner2.ownerKey + "/" + recordKey(storedValue(record2)),
-          value: storedValue({ ownerKey: owner2.ownerKey, record: record2 }),
-          version: null
-        });
-  }
-  return result;
-}
-function decodeStateFromRecords(metadata, rows) {
-  assertObject(metadata, "character database metadata");
-  if (metadata.migrationStatus === "writing" || metadata.legacyImportPending === true)
-    throw new Error("Character migration has not completed");
-  const state = {
-    version: metadata.version,
-    active: metadata.active === null ? { Model: { id: "chat" } } : metadata.active,
-    memoryPreferences: metadata.memoryPreferences,
-    cards: [],
-    groups: [],
-    tags: [],
-    stores: [],
-    conversationGroups: [],
-    owners: []
-  };
-  const owners = /* @__PURE__ */ new Map();
-  for (const row of rows) {
-    switch (row.collection) {
-      case "owners": {
-        assertObject(row.value, "memory owner metadata");
-        const owner2 = {
-          ...row.value,
-          memories: [],
-          links: [],
-          chunks: [],
-          candidates: [],
-          embeddings: []
-        };
-        if (owner2.ownerKey !== row.key || owners.has(row.key))
-          throw new Error("Invalid memory owner record: " + row.key);
-        owners.set(row.key, owner2);
-        state.owners.push(owner2);
-        break;
-      }
-      case "cards":
-      case "groups":
-      case "tags":
-      case "stores":
-      case "conversationGroups":
-        state[row.collection].push(row.value);
-        break;
-    }
-  }
-  for (const row of rows) {
-    if (!ownerCollections.some((collection) => collection === row.collection))
-      continue;
-    assertObject(row.value, "owner-scoped record");
-    const ownerKey = requireId(row.value.ownerKey, "record owner key");
-    const owner2 = owners.get(ownerKey);
-    if (owner2 === void 0)
-      throw new Error("Missing record owner: " + ownerKey);
-    const entries = owner2[row.collection];
-    if (!Array.isArray(entries))
-      throw new Error("Invalid owner collection: " + row.collection);
-    if (row.key !== ownerKey + "/" + recordKey(row.value.record)) {
-      throw new Error("Invalid owner-scoped record: " + row.key);
-    }
-    entries.push(row.value.record);
-  }
-  return state;
-}
-
-// src/storage/migrations/legacy-to-v1.ts
-function assertMigrationPlan(value) {
-  assertObject(value, "character schema migration");
-  if (value.from !== "released" || value.to !== 1) throw new Error("Unsupported pending character schema migration");
-  if (!["files", "authors", "records", "verify", "cleanup"].some((phase) => phase === value.phase)) throw new Error("Invalid character migration phase");
-  assertInteger(value.cursor, "character migration cursor", 0);
-  assertObject(value.identities, "character migration identities");
-  for (const field of ["files", "directories", "authors", "changes"])
-    if (!Array.isArray(value[field])) throw new Error("Invalid character migration work: " + field);
-  for (const directory of value.directories) {
-    assertObject(directory, "character migration directory");
-    for (const field of ["source", "destination"])
-      if (typeof directory[field] !== "string" || !/^owners\/(?:character|shared)%3A[^/]+$/u.test(directory[field]))
-        throw new Error("Invalid character migration owner directory");
-    if (directory.source === directory.destination) throw new Error("Character migration owner directory must change");
-  }
-  for (const file of value.files) {
-    assertObject(file, "character migration file");
-    if (typeof file.source !== "string" || typeof file.destination !== "string") throw new Error("Invalid character migration file path");
-    const source = file.source, destination = file.destination;
-    if (!value.directories.some((directory) => source.startsWith(directory.source + "/") && destination === directory.destination + source.slice(directory.source.length)))
-      throw new Error("Character migration file is outside its owner directory");
-  }
-  for (const group of value.changes)
-    if (!Array.isArray(group) || group.length < 1 || group.length > 2) throw new Error("Invalid atomic character migration record change");
-  const lengths = { files: value.files.length, authors: value.authors.length, records: value.changes.length, verify: 0, cleanup: value.directories.length };
-  if (value.cursor > lengths[value.phase]) throw new Error("Character migration cursor exceeds its work");
-}
-function completed(result) {
-  if (!result.successful) throw new Error(result.details);
-}
-function absolute(directory, relative) {
-  if (relative.split("/").some((part) => part === "" || part === "." || part === ".." || /[\\:\u0000-\u001f]/u.test(part)))
-    throw new Error("Invalid character migration resource path: " + relative);
-  return directory + "/" + relative;
-}
-function ownerFiles(directory, source, destination) {
-  return __async(this, null, function* () {
-    const path = absolute(directory, source);
-    if (!(yield Tools.Files.exists(path)).exists) return [];
-    const listing = yield Tools.Files.list(path);
-    const result = [];
-    for (const entry of listing.entries) {
-      if (entry.name === "." || entry.name === ".." || /[/\\:\u0000-\u001f]/u.test(entry.name))
-        throw new Error("Invalid owner resource entry: " + entry.name);
-      const from = source + "/" + entry.name, to = destination + "/" + entry.name;
-      if (entry.isDirectory) result.push(...yield ownerFiles(directory, from, to));
-      else result.push({ source: from, destination: to });
-    }
-    return result;
-  });
-}
-function removeDeletedReferences(state) {
-  const tags = new Set(state.tags.map((tag) => tag.id));
-  const stores = new Set(state.stores.map((store) => store.id));
-  const cards = new Set(state.cards.map((card) => card.id));
-  for (const card of state.cards) {
-    card.attachedTagIds = card.attachedTagIds.filter((id2) => tags.has(id2));
-    card.sharedMemoryMounts = card.sharedMemoryMounts.filter((mount2) => stores.has(mount2.sharedMemoryId));
-  }
-  for (const group of state.groups) group.members = group.members.filter((member2) => cards.has(member2.characterCardId));
-  for (const owner2 of state.owners) {
-    const memories = new Set(owner2.memories.map((memory) => memory.id));
-    const documents2 = new Set(owner2.memories.filter((memory) => memory.isDocumentNode).map((memory) => memory.uuid));
-    owner2.links = owner2.links.filter((link) => memories.has(link.sourceMemoryId) && memories.has(link.targetMemoryId));
-    owner2.chunks = owner2.chunks.filter((chunk) => documents2.has(chunk.memoryUuid));
-  }
-}
-function prepareVersionOne(storage, metadata, directory) {
-  return __async(this, null, function* () {
-    const rows = yield migrationRecords(storage);
-    const input = clone(rows);
-    for (const row of input) {
-      if (row.collection === "cards") {
-        assertObject(row.value, "legacy card");
-        delete row.value.isDefault;
-      }
-    }
-    const inputMetadata = { ...metadata, version: 1 };
-    delete inputMetadata.legacyImportPending;
-    const state = decodeStateFromRecords(inputMetadata, input);
-    removeDeletedReferences(state);
-    const before = records(state), identities = {};
-    function identity2(scope, value) {
-      requireId(value, scope + " identity");
-      const key = JSON.stringify([scope, value]);
-      if (!Object.prototype.hasOwnProperty.call(identities, key)) identities[key] = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value) ? value : uuid();
-      return identities[key];
-    }
-    function reference(scope, value) {
-      const key = JSON.stringify([scope, value]);
-      if (!Object.prototype.hasOwnProperty.call(identities, key)) throw new Error("Missing migration reference: " + key);
-      return identities[key];
-    }
-    const sourceStoreIds = new Set(state.stores.map((store) => store.id));
-    const sourceCardIds = new Set(state.cards.map((card) => card.id));
-    const sourceGroupIds = new Set(state.groups.map((group) => group.id));
-    for (const collection of configurationNames)
-      for (const record2 of state[collection]) record2.id = identity2(collection, record2.id);
-    function selection2(value) {
-      const parsed = parseChatSelection(value);
-      if (parsed.kind === "card" && sourceCardIds.has(parsed.id)) value = "card:" + reference("cards", parsed.id);
-      if (parsed.kind === "group" && sourceGroupIds.has(parsed.id)) value = "group:" + reference("groups", parsed.id);
-      return value;
-    }
-    for (const card of state.cards) {
-      card.attachedTagIds = card.attachedTagIds.map((id2) => reference("tags", id2));
-      if (card.sharedMemoryId !== null && sourceStoreIds.has(card.sharedMemoryId)) card.sharedMemoryId = reference("stores", card.sharedMemoryId);
-      for (const mount2 of card.sharedMemoryMounts) mount2.sharedMemoryId = reference("stores", mount2.sharedMemoryId);
-    }
-    for (const group of state.groups)
-      for (const member2 of group.members) member2.characterCardId = reference("cards", member2.characterCardId);
-    for (const group of state.conversationGroups) {
-      if (group.ownerSelection !== null && /^(card|group):/u.test(group.ownerSelection)) group.ownerSelection = selection2(group.ownerSelection);
-    }
-    if ("CharacterCard" in state.active && sourceCardIds.has(state.active.CharacterCard.id)) state.active.CharacterCard.id = reference("cards", state.active.CharacterCard.id);
-    if ("CharacterGroup" in state.active && sourceGroupIds.has(state.active.CharacterGroup.id)) state.active.CharacterGroup.id = reference("groups", state.active.CharacterGroup.id);
-    const directories = [];
-    for (const owner2 of state.owners) {
-      const old = owner2.ownerKey;
-      if (old.startsWith("character:")) owner2.ownerKey = "character:" + reference("cards", old.slice(10));
-      else if (old.startsWith("shared:")) owner2.ownerKey = "shared:" + reference("stores", old.slice(7));
-      else throw new Error("Invalid migration owner: " + old);
-      owner2.userDocumentPath = userDocumentPath(owner2.ownerKey);
-      if (old !== owner2.ownerKey) directories.push({ source: "owners/" + encodeURIComponent(old), destination: "owners/" + encodeURIComponent(owner2.ownerKey) });
-      const scope = owner2.ownerKey;
-      for (const collection of ["memories", "links", "chunks", "candidates", "embeddings"])
-        for (const record2 of owner2[collection]) record2.id = identity2(scope + "/" + collection, record2.id);
-      for (const memory of owner2.memories) {
-        memory.uuid = identity2(scope + "/memoryUuid", memory.uuid);
-        for (const tag of memory.tags) tag.id = identity2(scope + "/memoryTags", tag.id);
-        for (const property2 of memory.properties) property2.id = identity2(scope + "/memoryProperties", property2.id);
-      }
-      for (const link of owner2.links) {
-        link.sourceMemoryId = reference(scope + "/memories", link.sourceMemoryId);
-        link.targetMemoryId = reference(scope + "/memories", link.targetMemoryId);
-      }
-      for (const chunk of owner2.chunks) chunk.memoryUuid = reference(scope + "/memoryUuid", chunk.memoryUuid);
-      if (owner2.rebuildTask !== null) owner2.rebuildTask.id = identity2(scope + "/rebuildTask", owner2.rebuildTask.id);
-    }
-    const resourceMoves = [];
-    for (const move of directories) {
-      resourceMoves.push(move, { source: absolute(directory, move.source), destination: absolute(directory, move.destination) });
-    }
-    for (const owner2 of state.owners) for (const memory of owner2.memories)
-      for (const field of ["documentPath", "chunkIndexFilePath"]) {
-        const path = memory[field];
-        if (path === null) continue;
-        const source = path.startsWith("owners/") ? absolute(directory, path) : path;
-        if (!(yield Tools.Files.exists(source)).exists) {
-          memory[field] = null;
-          continue;
-        }
-        for (const move of resourceMoves) if (path.startsWith(move.source + "/")) {
-          memory[field] = move.destination + path.slice(move.source.length);
-          break;
-        }
-      }
-    const after = records(state), changes = [];
-    const original = new Map(rows.map((row) => [JSON.stringify([row.collection, row.key]), row]));
-    const targets = /* @__PURE__ */ new Set();
-    for (let index = 0; index < after.length; index += 1) {
-      const from = before[index], to = after[index], key = JSON.stringify([to.collection, to.key]);
-      if (targets.has(key)) throw new Error("Duplicate migration destination: " + key);
-      targets.add(key);
-      const source = original.get(JSON.stringify([from.collection, from.key]));
-      if (source === void 0) throw new Error("Missing migration source record");
-      if (from.key === to.key) {
-        if (!equal(source.value, to.value)) changes.push([{ op: "put", collection: to.collection, key: to.key, value: to.value, expectedValue: source.value }]);
-      } else {
-        if (original.has(key)) throw new Error("Occupied migration destination: " + key);
-        changes.push([
-          { op: "put", collection: to.collection, key: to.key, value: to.value, expectedValue: null },
-          { op: "delete", collection: from.collection, key: from.key, expectedValue: source.value }
-        ]);
-      }
-    }
-    const retained = new Set(before.map((row) => JSON.stringify([row.collection, row.key])));
-    for (const row of rows) if (!retained.has(JSON.stringify([row.collection, row.key])))
-      changes.push([{ op: "delete", collection: row.collection, key: row.key, expectedValue: row.value }]);
-    for (const [key, originalValue] of (yield storage.chats.data()).entries()) {
-      const collection = key.startsWith("binding_") ? "chat_bindings" : key.startsWith("draft_") ? "chat_drafts" : null;
-      if (collection === null) throw new Error("Unsupported chat preference during migration: " + key);
-      const id2 = key.slice(collection === "chat_bindings" ? 8 : 6);
-      assertObject(originalValue, collection);
-      const value = clone(originalValue);
-      value.selection = selection2(requireId(value.selection, "stored selection"));
-      if (!equal(value, originalValue)) changes.push([{ op: "put", collection, key: id2, value, expectedValue: originalValue }]);
-    }
-    const files = [];
-    for (const move of directories) {
-      const entries = yield ownerFiles(directory, move.source, move.destination);
-      files.push(...entries);
-    }
-    const authors = [];
-    const cardIds = new Map(before.filter((row) => row.collection === "cards").map((row) => [row.key, reference("cards", row.key)]));
-    if ([...cardIds].some(([old, next]) => old !== next)) {
-      const chats = yield Tools.Chat.listAll();
-      for (const chat of chats.chats) for (let start = 0; start < chat.messageCount; start += 100) {
-        const page = yield Tools.Chat.getMessagesRange(chat.id, { order: "asc", start, end: Math.min(chat.messageCount - 1, start + 99) });
-        for (const message of page.messages) for (let variantIndex = 0; variantIndex < message.variantCount; variantIndex += 1) {
-          const target = { kind: "message", chatId: chat.id, messageTimestamp: message.timestamp, variantIndex };
-          const { extension } = yield Tools.Chat.readExtension(target);
-          if (extension === null) continue;
-          assertObject(extension, "legacy message author");
-          if (Object.keys(extension).length !== 1) throw new Error("Invalid legacy message author");
-          const participant = requireId(extension.participantId, "legacy participant id"), next = cardIds.get(participant);
-          if (next !== void 0 && next !== participant) authors.push({ target, before: participant, after: next });
-        }
-      }
-    }
-    return { from: "released", to: 1, phase: "files", cursor: 0, active: storedValue(state.active), identities, files, directories, authors, changes };
-  });
-}
-function verifyFile(directory, file) {
-  return __async(this, null, function* () {
-    const source = yield Tools.Files.readBinary(absolute(directory, file.source));
-    const target = yield Tools.Files.readBinary(absolute(directory, file.destination));
-    if (source.size !== target.size || source.contentBase64 !== target.contentBase64)
-      throw new Error("Character migration resource verification failed: " + file.destination);
-  });
-}
-function migrationRecords(storage) {
-  return __async(this, null, function* () {
-    const rows = [], configuration = yield storage.data();
-    for (const name of configurationNames) for (const [key, value] of configuration[name].entries()) {
-      if (!key.startsWith(recordPrefix)) throw new Error("Unknown character preference during migration: " + key);
-      rows.push({ collection: name, key: key.slice(recordPrefix.length), value, version: null });
-    }
-    for (const collection of ["owners", "memories", "links", "chunks", "candidates", "embeddings"])
-      for (const entry of yield storage.memory.read(collection)) rows.push({ collection, ...entry });
-    return rows;
-  });
-}
-function applyChanges(storage, changes) {
-  return __async(this, null, function* () {
-    const first = changes[0];
-    if (first === void 0) throw new Error("Empty character migration unit");
-    if (changes.some((change) => change.collection !== first.collection)) throw new Error("Migration unit spans storage owners");
-    const collection = first.collection;
-    const name = configurationNames.find((name2) => name2 === collection);
-    const store = name === void 0 ? collection === "chat_bindings" || collection === "chat_drafts" ? storage.chats : null : storage.configuration[name];
-    if (store !== null) {
-      yield store.edit((preferences) => {
-        const prefix = collection === "chat_bindings" ? "binding_" : collection === "chat_drafts" ? "draft_" : recordPrefix;
-        for (const change of changes) {
-          const key = prefix + change.key, value = preferences.get(key);
-          if (change.op === "put" && equal(value, change.value) || change.op === "delete" && value === void 0) continue;
-          if (change.expectedValue === null ? value !== void 0 : !equal(value, change.expectedValue)) throw new Error("Character migration source changed: " + collection + "/" + change.key);
-          if (change.op === "put") preferences.set(key, change.value);
-          else preferences.remove(key);
-        }
-      });
-      return;
-    }
-    const mutations = [];
-    for (const change of changes) {
-      const entry = yield storage.memory.get(collection, change.key);
-      if (change.op === "put" && entry !== null && equal(entry.value, change.value) || change.op === "delete" && entry === null) continue;
-      if (change.expectedValue === null ? entry !== null : entry === null || !equal(entry.value, change.expectedValue)) throw new Error("Character memory migration source changed: " + change.key);
-      mutations.push(change.op === "put" ? { op: "put", collection, key: change.key, value: change.value, expectedVersion: entry === null ? null : entry.version } : { op: "delete", collection, key: change.key, expectedVersion: entry === null ? null : entry.version });
-    }
-    if (mutations.length !== 0) yield storage.memory.commit(mutations);
-  });
-}
-function migrateLegacyToV1(storage, preferences, directory, source) {
-  return __async(this, null, function* () {
-    const metadata = clone(source);
-    let plan;
-    const persisted = (yield storage.migration.data()).get("plan");
-    if (persisted === void 0) plan = yield prepareVersionOne(storage, metadata, directory);
-    else {
-      assertMigrationPlan(persisted);
-      plan = clone(persisted);
-    }
-    let previous = persisted === void 0 ? void 0 : storedValue(persisted);
-    function publish() {
-      return __async(this, null, function* () {
-        yield storage.migration.edit((work) => {
-          if (!equal(work.get("plan"), previous)) throw new Error("Character migration plan changed concurrently");
-          work.set("plan", storedValue(clone(plan)));
-        });
-        previous = storedValue(clone(plan));
-      });
-    }
-    if (persisted === void 0) yield publish();
-    while (true) {
-      switch (plan.phase) {
-        case "files":
-          for (; plan.cursor < plan.files.length; ) {
-            const file = plan.files[plan.cursor], destination = absolute(directory, file.destination);
-            const exists = yield Tools.Files.exists(destination);
-            if (!exists.exists) {
-              completed(yield Tools.Files.mkdir(destination.slice(0, destination.lastIndexOf("/")), true));
-              completed(yield Tools.Files.copy(absolute(directory, file.source), destination, false));
-            } else yield verifyFile(directory, file);
-            plan.cursor += 1;
-            yield publish();
-          }
-          for (const move of plan.directories) {
-            const document2 = absolute(directory, move.destination + "/USER.md");
-            if (!(yield Tools.Files.exists(document2)).exists) {
-              completed(yield Tools.Files.mkdir(document2.slice(0, document2.lastIndexOf("/")), true));
-              completed(yield Tools.Files.write(document2, ""));
-            }
-          }
-          plan.phase = "authors";
-          plan.cursor = 0;
-          yield publish();
-          break;
-        case "authors":
-          for (; plan.cursor < plan.authors.length; ) {
-            const author = plan.authors[plan.cursor], { extension } = yield Tools.Chat.readExtension(author.target);
-            if (extension === null || Object.keys(extension).length !== 1 || extension.participantId !== author.before && extension.participantId !== author.after)
-              throw new Error("Message author changed during character migration");
-            if (extension.participantId === author.before) yield Tools.Chat.writeExtension(author.target, { participantId: author.after });
-            plan.cursor += 1;
-            yield publish();
-          }
-          plan.phase = "records";
-          plan.cursor = 0;
-          yield publish();
-          break;
-        case "records":
-          while (plan.cursor < plan.changes.length) {
-            const batch = [], collection = plan.changes[plan.cursor][0].collection;
-            let cursor = plan.cursor;
-            while (cursor < plan.changes.length && plan.changes[cursor][0].collection === collection && batch.length + plan.changes[cursor].length <= 1e3) {
-              batch.push(...plan.changes[cursor]);
-              cursor += 1;
-            }
-            yield applyChanges(storage, batch);
-            plan.cursor = cursor;
-            yield publish();
-          }
-          plan.phase = "cleanup";
-          plan.cursor = 0;
-          yield publish();
-          break;
-        // Retains the persisted phase name so interrupted released migrations can continue.
-        case "verify":
-          plan.phase = "cleanup";
-          plan.cursor = 0;
-          yield publish();
-          break;
-        case "cleanup":
-          for (; plan.cursor < plan.directories.length; ) {
-            const source2 = absolute(directory, plan.directories[plan.cursor].source);
-            if ((yield Tools.Files.exists(source2)).exists) {
-              completed(yield Tools.Files.deleteFile(source2, true));
-            }
-            plan.cursor += 1;
-            yield publish();
-          }
-          metadata.version = 1;
-          metadata.active = plan.active;
-          delete metadata.legacyImportPending;
-          preferences.set("state", metadata);
-          return;
-        default:
-          throw new Error("Invalid character migration phase");
-      }
-    }
-  });
-}
-
-// src/storage/schema.ts
-function migrateCharacterSchema(storage, preferences, directory) {
-  return __async(this, null, function* () {
-    const metadata = preferences.get("state");
-    if (metadata === void 0) return;
-    assertObject(metadata, "character schema metadata");
-    if (metadata.migrationStatus === "writing") throw new Error("Character migration has not completed: legacy import is still writing");
-    if (metadata.version !== 1) throw new Error("Unsupported character schema version: " + metadata.version);
-    yield migrateLegacyToV1(storage, preferences, directory, metadata);
-  });
-}
-
-// src/storage/memory-merge.json
-var memory_merge_default = {
-  version: 4,
-  maxEntities: 1,
-  maxReferences: 48,
-  entities: [
-    {
-      collection: "owners",
-      identityColumn: "ownerKey",
-      nameColumn: null,
-      ignoredColumns: [],
-      keyEncoding: "slash_root",
-      matchMode: "identity",
-      keyReferences: [
-        {
-          prefix: "character:",
-          target: {
-            kind: "preference",
-            path: "runtime/plugin_data/space/com.operit.character_cards/cards.preferences.json"
-          }
-        },
-        {
-          prefix: "shared:",
-          target: {
-            kind: "preference",
-            path: "runtime/plugin_data/space/com.operit.character_cards/stores.preferences.json"
-          }
-        }
-      ],
-      childCollections: [
-        "memories",
-        "links",
-        "chunks",
-        "candidates",
-        "embeddings"
-      ],
-      references: [
-        {
-          collection: "owners",
-          column: "ownerKey",
-          target: {
-            kind: "preference",
-            path: "runtime/plugin_data/space/com.operit.character_cards/cards.preferences.json"
-          },
-          keyPrefix: "character:",
-          keySuffix: "",
-          valueEncoding: "direct"
-        },
-        {
-          collection: "owners",
-          column: "ownerKey",
-          target: {
-            kind: "preference",
-            path: "runtime/plugin_data/space/com.operit.character_cards/stores.preferences.json"
-          },
-          keyPrefix: "shared:",
-          keySuffix: "",
-          valueEncoding: "direct"
-        },
-        {
-          collection: "owners",
-          column: "userDocumentPath",
-          target: {
-            kind: "collection",
-            collection: "owners"
-          },
-          keyPrefix: "owners/",
-          keySuffix: "/USER.md",
-          valueEncoding: "uri_component"
-        },
-        {
-          collection: "memories",
-          column: "ownerKey",
-          target: {
-            kind: "preference",
-            path: "runtime/plugin_data/space/com.operit.character_cards/cards.preferences.json"
-          },
-          keyPrefix: "character:",
-          keySuffix: "",
-          valueEncoding: "direct"
-        },
-        {
-          collection: "memories",
-          column: "ownerKey",
-          target: {
-            kind: "preference",
-            path: "runtime/plugin_data/space/com.operit.character_cards/stores.preferences.json"
-          },
-          keyPrefix: "shared:",
-          keySuffix: "",
-          valueEncoding: "direct"
-        },
-        {
-          collection: "links",
-          column: "ownerKey",
-          target: {
-            kind: "preference",
-            path: "runtime/plugin_data/space/com.operit.character_cards/cards.preferences.json"
-          },
-          keyPrefix: "character:",
-          keySuffix: "",
-          valueEncoding: "direct"
-        },
-        {
-          collection: "links",
-          column: "ownerKey",
-          target: {
-            kind: "preference",
-            path: "runtime/plugin_data/space/com.operit.character_cards/stores.preferences.json"
-          },
-          keyPrefix: "shared:",
-          keySuffix: "",
-          valueEncoding: "direct"
-        },
-        {
-          collection: "chunks",
-          column: "ownerKey",
-          target: {
-            kind: "preference",
-            path: "runtime/plugin_data/space/com.operit.character_cards/cards.preferences.json"
-          },
-          keyPrefix: "character:",
-          keySuffix: "",
-          valueEncoding: "direct"
-        },
-        {
-          collection: "chunks",
-          column: "ownerKey",
-          target: {
-            kind: "preference",
-            path: "runtime/plugin_data/space/com.operit.character_cards/stores.preferences.json"
-          },
-          keyPrefix: "shared:",
-          keySuffix: "",
-          valueEncoding: "direct"
-        },
-        {
-          collection: "candidates",
-          column: "ownerKey",
-          target: {
-            kind: "preference",
-            path: "runtime/plugin_data/space/com.operit.character_cards/cards.preferences.json"
-          },
-          keyPrefix: "character:",
-          keySuffix: "",
-          valueEncoding: "direct"
-        },
-        {
-          collection: "candidates",
-          column: "ownerKey",
-          target: {
-            kind: "preference",
-            path: "runtime/plugin_data/space/com.operit.character_cards/stores.preferences.json"
-          },
-          keyPrefix: "shared:",
-          keySuffix: "",
-          valueEncoding: "direct"
-        },
-        {
-          collection: "embeddings",
-          column: "ownerKey",
-          target: {
-            kind: "preference",
-            path: "runtime/plugin_data/space/com.operit.character_cards/cards.preferences.json"
-          },
-          keyPrefix: "character:",
-          keySuffix: "",
-          valueEncoding: "direct"
-        },
-        {
-          collection: "embeddings",
-          column: "ownerKey",
-          target: {
-            kind: "preference",
-            path: "runtime/plugin_data/space/com.operit.character_cards/stores.preferences.json"
-          },
-          keyPrefix: "shared:",
-          keySuffix: "",
-          valueEncoding: "direct"
-        }
-      ]
-    }
-  ]
-};
-
-// src/storage/memory.ts
-var characterMerge = memory_merge_default;
-var CharacterMemoryDatabase = class _CharacterMemoryDatabase {
-  /** Retains one authenticated object handle without declaring business SQL tables. */
-  constructor(database2) {
-    this.database = database2;
-  }
-  /** Opens the sole synchronized character namespace independently of plugin installation scope. */
-  static open() {
-    return __async(this, null, function* () {
-      const directory = ToolPkg.getSpaceDataDir();
-      if (typeof directory !== "string" || directory.trim() === "")
-        throw new Error("Plugin data directory is unavailable");
-      const database2 = new _CharacterMemoryDatabase(yield Tools.Storage.objects.open({ path: directory + "/memory.sqlite", merge: characterMerge }));
-      return database2;
-    });
-  }
-  /** Closes the retained memory engine handle. */
-  close() {
-    return this.database.close();
-  }
-  /** Reads complete JSON values in primary-key order using bounded host pages. */
-  read(collection) {
-    return __async(this, null, function* () {
-      const result = [];
-      const source = this.database.collection(collection);
-      let after = null;
-      for (; ; ) {
-        const page = yield source.list(after, 1e3);
-        result.push(...page);
-        if (page.length < 1e3) return result;
-        after = page[page.length - 1].key;
-      }
-    });
-  }
-  /** Reads one exact document and its host-issued concurrency version. */
-  get(collection, key) {
-    return this.database.collection(collection).get(key);
-  }
-  /** Reads selected identities in one host snapshot without scanning their collections. */
-  getMany(collection, keys) {
-    return this.database.collection(collection).getMany([...keys]);
-  }
-  /** Publishes complete changed JSON documents and memory objects in one guarded transaction. */
-  commit(mutations) {
-    return this.database.commit(mutations);
-  }
-};
-
-// src/storage/preferences.ts
-var merge = merge_default;
-var configurationNames = ["cards", "groups", "tags", "stores", "conversationGroups"];
-var recordPrefix = "record_";
-var CharacterStorage = class _CharacterStorage {
-  /** Retains explicit storage owners without emulating a cross-engine transaction. */
-  constructor(configuration, metadata, chats, migration, memory) {
-    this.configuration = configuration;
-    this.metadata = metadata;
-    this.chats = chats;
-    this.migration = migration;
-    this.memory = memory;
-  }
-  /** Opens JSON configuration owners and upgrades the plugin schema before business reads. */
-  static open() {
-    return __async(this, null, function* () {
-      const directory = ToolPkg.getSpaceDataDir();
-      if (typeof directory !== "string" || directory.trim() === "") throw new Error("Plugin data directory is unavailable");
-      const handles = [];
-      let memory;
-      try {
-        function open(name) {
-          return __async(this, null, function* () {
-            const store = yield Tools.Storage.dataStore.open({ path: directory + "/" + name + ".preferences.json", merge: merge[name] });
-            handles.push(store);
-            return store;
-          });
-        }
-        const configuration = {};
-        for (const name of configurationNames) configuration[name] = yield open(name);
-        const metadata = yield open("meta"), chats = yield open("chats");
-        const migration = yield Tools.Storage.dataStore.open({ path: directory + "/migration.preferences.json" });
-        handles.push(migration);
-        memory = yield CharacterMemoryDatabase.open();
-        const storage = new _CharacterStorage(configuration, metadata, chats, migration, memory);
-        metadata.withSchema(1, (version, preferences) => __async(null, null, function* () {
-          switch (version) {
-            case 0:
-              yield migrateCharacterSchema(storage, preferences, directory);
-              break;
-            default:
-              throw new Error("Missing character schema migration: " + version);
-          }
-        }));
-        const current = yield metadata.data();
-        const state = current.get("state");
-        if (state !== void 0 && state.legacyImportPending === true) yield metadata.edit((preferences) => migrateCharacterSchema(storage, preferences, directory));
-        if ((yield migration.data()).contains("plan")) yield migration.edit((preferences) => {
-          preferences.remove("plan");
-        });
-        return storage;
-      } catch (error) {
-        const closed = yield Promise.allSettled([...handles.map((handle) => handle.close()), ...memory === void 0 ? [] : [memory.close()]]);
-        const failures = closed.filter((result) => result.status === "rejected").map((result) => result.reason);
-        if (failures.length !== 0) throw Object.assign(new Error("Character storage open and handle cleanup failed"), { cause: error, cleanupErrors: failures });
-        throw error;
-      }
-    });
-  }
-  /** Reads each configuration owner's immutable snapshot without loading memory objects. */
-  data() {
-    return __async(this, null, function* () {
-      const result = {};
-      for (const name of configurationNames) result[name] = yield this.configuration[name].data();
-      return result;
-    });
-  }
-};
-
-// src/chat-storage.ts
-var database = null;
-function chatDatabase() {
-  if (database === null) database = CharacterStorage.open();
-  return database;
-}
-function findChatBinding(chatId) {
-  return __async(this, null, function* () {
-    requireId(chatId, "chat id");
-    const value = (yield (yield chatDatabase()).chats.data()).get("binding_" + chatId);
-    return value === void 0 ? null : { chatId, selection: decodeChatMarker(value).selection };
-  });
-}
+// src/memory-jobs/scheduler.ts
+var CANDIDATE_PROCESSING_LEASE_MS = 30 * 60 * 1e3;
 
 // src/definition.ts
-var definition = { id: "com.operit.character_cards", title: "\u89D2\u8272\u5361", icon: "Badge", order: 150 };
+var definition = { id: "com.operit.character_cards", title: "角色卡", icon: "Badge", order: 150 };
 var chatUiRoutes = {
   editor: `toolpkg:${definition.id}:ui:main`,
   selection: `toolpkg:${definition.id}:ui:selection`,
@@ -1813,7 +574,7 @@ function createUiScreenSession(presentation) {
             }
             case "memory-attachment": {
               const complete = session.completeScreen(result);
-              completion = { ...complete, value: { type: "text", name: "\u8BB0\u5FC6\u9644\u4EF6", content: result.content, mediaType: "text/plain" } };
+              completion = { ...complete, value: { type: "text", name: "记忆附件", content: result.content, mediaType: "text/plain" } };
               break;
             }
             case "preview":
@@ -1854,12 +615,12 @@ function readSelectorData(input) {
     let selected;
     if (input.chatId === null) selected = encodeSelection(yield callMainDomain("activePrompt.get", {}));
     else {
-      const binding = yield findChatBinding(input.chatId);
+      const binding = yield callMainDomain("chat.configuration.binding.find", { chatId: input.chatId });
       selected = binding === null ? "model:chat" : binding.selection;
     }
     if (selected !== null) requireChatSelection(selected, cards, groups);
     const options = [];
-    if (input.kind === "card" || input.kind === "all") options.push({ key: "model:chat", token: "model:chat", kind: "model", id: "chat", title: "\u4EC5\u4F7F\u7528\u6A21\u578B", description: "\u4E0D\u4F7F\u7528\u89D2\u8272\u5361\u63D0\u793A\u8BCD\u548C\u89D2\u8272\u8BB0\u5FC6", selection: { Model: { id: "chat" } }, avatar: { type: "model" } });
+    if (input.kind === "card" || input.kind === "all") options.push({ key: "model:chat", token: "model:chat", kind: "model", id: "chat", title: "仅使用模型", description: "不使用角色卡提示词和角色记忆", selection: { Model: { id: "chat" } }, avatar: { type: "model" } });
     if (input.kind === "card" || input.kind === "all") {
       for (const card of cards) {
         let avatar;
@@ -1987,13 +748,13 @@ function selectorAvatar(ctx, option) {
   const props = { width: 28, height: 28, contentScale: "crop", contentDescription: option.title, modifier: ctx.Modifier.clip({ type: "circle" }) };
   switch (option.avatar.type) {
     case "uri":
-      return OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:83756",[{ ...props, uri: option.avatar.uri }],__operitUiTemplate_83756);
+      return ctx.UI.Image({ ...props, uri: option.avatar.uri });
     case "resource":
-      return option.avatar.path === null ? OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:83872",[OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:83938",[option.title],__operitUiTemplate_83938)],__operitUiTemplate_83872) : OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:84043",[{ ...props, path: option.avatar.path }],__operitUiTemplate_84043);
+      return option.avatar.path === null ? ctx.UI.Box({ width: 28, height: 28, contentAlignment: "center" }, ctx.UI.Icon({ name: "Person", size: 22, tint: "onSurfaceVariant", contentDescription: option.title })) : ctx.UI.Image({ ...props, path: option.avatar.path });
     case "model":
-      return OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:84128",[OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:84194",[option.title],__operitUiTemplate_84194)],__operitUiTemplate_84128);
+      return ctx.UI.Box({ width: 28, height: 28, contentAlignment: "center" }, ctx.UI.Icon({ name: "SmartToy", size: 22, tint: "onSurfaceVariant", contentDescription: option.title }));
     case "group":
-      return OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:84331",[OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:84397",[option.title],__operitUiTemplate_84397)],__operitUiTemplate_84331);
+      return ctx.UI.Box({ width: 28, height: 28, contentAlignment: "center" }, ctx.UI.Icon({ name: "Groups", size: 22, tint: "onSurfaceVariant", contentDescription: option.title }));
   }
 }
 function selectorRow(ctx, option, state, controller) {
@@ -2005,51 +766,68 @@ function selectorRow(ctx, option, state, controller) {
   const props = { key: option.key, fillMaxWidth: true, paddingStart: 10, paddingTop: 7, paddingEnd: 8, paddingBottom: 7, verticalAlignment: "center", spacing: 8 };
   const contents = [
     selectorAvatar(ctx, option),
-    OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:85321",[[
-      OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:85388",[option.title,titleColor,active ? "700" : "600"],__operitUiTemplate_85388),
-      ...option.description === "" ? [] : [OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:85578",[option.description,descriptionColor],__operitUiTemplate_85578)]
-    ]],__operitUiTemplate_85321),
-    OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:85714",[switching ? OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:85792",null,__operitUiTemplate_85792) : OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:85870",[active ? "Check" : "CircleOutlined",active ? 18 : 16,active ? colors.primary : colors.onSurfaceVariant.copy({ alpha: 0.45 }),active ? "\u5F53\u524D\u9009\u4E2D" : "\u672A\u9009\u4E2D"],__operitUiTemplate_85870)],__operitUiTemplate_85714)
+    ctx.UI.Column({ weight: 1, horizontalAlignment: "start" }, [
+      ctx.UI.Text({ text: option.title, style: "bodySmall", maxLines: 1, overflow: "ellipsis", color: titleColor, fontWeight: active ? "700" : "600" }),
+      ...option.description === "" ? [] : [ctx.UI.Text({ text: option.description, style: "labelSmall", maxLines: 1, overflow: "ellipsis", color: descriptionColor })]
+    ]),
+    ctx.UI.Box({ width: 20, height: 20, contentAlignment: "center" }, switching ? ctx.UI.CircularProgressIndicator({ width: 16, height: 16, strokeWidth: 2 }) : ctx.UI.Icon({ name: active ? "Check" : "CircleOutlined", size: active ? 18 : 16, tint: active ? colors.primary : colors.onSurfaceVariant.copy({ alpha: 0.45 }), contentDescription: active ? "当前选中" : "未选中" }))
   ];
-  if (!enabled) return OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:86141",[props,contents],__operitUiTemplate_86141);
-  return OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:86179",[{
+  if (!enabled) return ctx.UI.Row(props, contents);
+  return ctx.UI.Row({
     ...props,
     /** Returns the real commit result to the existing generic Compose action channel without a synthetic receiver. */
     onClick: () => __async(null, null, function* () {
       return selectorResultJson(yield controller.select(option.key));
     })
-  },contents],__operitUiTemplate_86179);
+  }, contents);
 }
 function selectorView(ctx, input, state, controller) {
-  const title = input.kind === "card" ? "\u5207\u6362\u89D2\u8272\u5361" : input.kind === "group" ? "\u5207\u6362\u7FA4\u7EC4" : "\u5207\u6362\u89D2\u8272\u5361\u6216\u7FA4\u7EC4";
+  const title = input.kind === "card" ? "切换角色卡" : input.kind === "group" ? "切换群组" : "切换角色卡或群组";
   const colors = ctx.MaterialTheme.colorScheme;
-  const header = OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:86775",[[
-    OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:86911",[title],__operitUiTemplate_86911),
-    ...state.data === null ? [] : [OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:87027",[state.data.options.length + " \u4E2A",colors.onSurfaceVariant],__operitUiTemplate_87027), OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:87142",null,__operitUiTemplate_87142)],
-    OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:87176",[state.switchingKey === null && !state.finished,() => selectorResultJson(controller.cancel()),OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:87501",null,__operitUiTemplate_87501)],__operitUiTemplate_87176)
-  ]],__operitUiTemplate_86775);
+  const header = ctx.UI.Row({ fillMaxWidth: true, paddingStart: 16, paddingTop: 8, paddingEnd: 8, paddingBottom: 4, verticalAlignment: "center" }, [
+    ctx.UI.Text({ text: title, style: "titleSmall", fontWeight: "700", weight: 1 }),
+    ...state.data === null ? [] : [ctx.UI.Text({ text: state.data.options.length + " 个", style: "labelSmall", color: colors.onSurfaceVariant }), ctx.UI.Spacer({ width: 2 })],
+    ctx.UI.IconButton({
+      key: "selector-close",
+      enabled: state.switchingKey === null && !state.finished,
+      width: 32,
+      height: 32,
+      /** Emits the explicit cancellation discriminator, not a route pop that bypasses the plugin session. */
+      onClick: () => selectorResultJson(controller.cancel())
+    }, ctx.UI.Icon({ name: "Close", size: 18, contentDescription: "关闭" }))
+  ]);
   let body;
-  if (state.loading) body = OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:87625",[OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:87699",null,__operitUiTemplate_87699)],__operitUiTemplate_87625);
-  else if (state.data === null) body = OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:87816",[state.error,colors.error],__operitUiTemplate_87816);
-  else if (state.data.options.length === 0) body = OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:88007",[input.kind === "group" ? "\u6682\u65E0\u7FA4\u7EC4" : "\u6682\u65E0\u89D2\u8272\u5361",colors.onSurfaceVariant],__operitUiTemplate_88007);
+  if (state.loading) body = ctx.UI.Box({ weight: 1, fillMaxWidth: true, contentAlignment: "center" }, ctx.UI.CircularProgressIndicator({ width: 20, height: 20, strokeWidth: 2 }));
+  else if (state.data === null) body = ctx.UI.Text({ key: "selector-load-error", text: state.error, color: colors.error, paddingHorizontal: 16, paddingVertical: 18, weight: 1 });
+  else if (state.data.options.length === 0) body = ctx.UI.Text({ text: input.kind === "group" ? "暂无群组" : "暂无角色卡", style: "bodySmall", color: colors.onSurfaceVariant, paddingStart: 16, paddingTop: 18, paddingEnd: 16, paddingBottom: 20, weight: 1 });
   else {
     const options = state.data.options;
     const items = ctx.lazyItems(
       { key: "selector-records", itemCount: options.length, itemExtent: 56, initialItemCount: 24 },
       /** Builds one keyed row only when it enters the materialized viewport window. */
-      (index) => OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:88537",["selector-item:" + options[index].key,[
+      (index) => ctx.UI.Column({ key: "selector-item:" + options[index].key, fillMaxWidth: true }, [
         selectorRow(ctx, options[index], state, controller),
-        ...index + 1 === options.length ? [] : [OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:88730",[colors.outlineVariant.copy({ alpha: 0.45 })],__operitUiTemplate_88730)]
-      ]],__operitUiTemplate_88537)
+        ...index + 1 === options.length ? [] : [ctx.UI.HorizontalDivider({ thickness: 1, color: colors.outlineVariant.copy({ alpha: 0.45 }) })]
+      ])
     );
-    body = OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:88853",[{ key: "selector-records", weight: 1, fillMaxWidth: true, paddingStart: 8, paddingTop: 4, paddingEnd: 8, paddingBottom: 8, ...items }],__operitUiTemplate_88853);
+    body = ctx.UI.LazyColumn({ key: "selector-records", weight: 1, fillMaxWidth: true, paddingStart: 8, paddingTop: 4, paddingEnd: 8, paddingBottom: 8, ...items });
   }
-  return OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:89020",[state.switchingKey === null,state.switchingKey === null,() => controller.load(),() => selectorResultJson(controller.cancel()),OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:89671",[ctx.Modifier.widthIn({ maxWidth: 360 }).heightIn({ minHeight: 420, maxHeight: 420 }),[
+  return ctx.UI.Dialog({
+    key: "character-selection",
+    containerColor: "surfaceContainerHigh",
+    shape: { cornerRadius: 28 },
+    closeOnDismissRequest: false,
+    properties: { usePlatformDefaultWidth: false, dismissOnBackPress: state.switchingKey === null, dismissOnClickOutside: state.switchingKey === null },
+    /** Loads once through the main domain IPC; a rerender cannot initialize another store or retry a failed read. */
+    onLoad: () => controller.load(),
+    /** Returns explicit V1 cancellation for host dismissal rather than changing a global active selection. */
+    onDismissRequest: () => selectorResultJson(controller.cancel())
+  }, ctx.UI.Column({ fillMaxWidth: true, height: 420, modifier: ctx.Modifier.widthIn({ maxWidth: 360 }).heightIn({ minHeight: 420, maxHeight: 420 }) }, [
     header,
-    OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:89836",null,__operitUiTemplate_89836),
+    ctx.UI.HorizontalDivider({ thickness: 1 }),
     body,
-    ...state.error === "" || state.data === null ? [] : [OperitComposeGeneration.template(ctx,"com.operit.character_cards:dist/ui/selection/index.ui.js:89947",[state.error,colors.error],__operitUiTemplate_89947)]
-  ]],__operitUiTemplate_89671)],__operitUiTemplate_89020);
+    ...state.error === "" || state.data === null ? [] : [ctx.UI.Text({ key: "selector-commit-error", text: state.error, color: colors.error, style: "bodySmall", paddingHorizontal: 16, paddingVertical: 8 })]
+  ]));
 }
 function renderSelectionScreen(ctx) {
   const [presentation] = ctx.useState("presentation", null);
@@ -2070,37 +848,3 @@ function renderSelectionScreen(ctx) {
 function Screen(ctx) {
   return renderSelectionScreen(ctx);
 }
-
-function __operitUiTemplate_83756(__ctx,__values){return __ctx.UI.Image(__values[0]); }
-function __operitUiTemplate_83938(__ctx,__values){return __ctx.UI.Icon({name:"Person",size:22,tint:"onSurfaceVariant",contentDescription:__values[0]}); }
-function __operitUiTemplate_83872(__ctx,__values){return __ctx.UI.Box({width:28,height:28,contentAlignment:"center"},__values[0]); }
-function __operitUiTemplate_84043(__ctx,__values){return __ctx.UI.Image(__values[0]); }
-function __operitUiTemplate_84194(__ctx,__values){return __ctx.UI.Icon({name:"SmartToy",size:22,tint:"onSurfaceVariant",contentDescription:__values[0]}); }
-function __operitUiTemplate_84128(__ctx,__values){return __ctx.UI.Box({width:28,height:28,contentAlignment:"center"},__values[0]); }
-function __operitUiTemplate_84397(__ctx,__values){return __ctx.UI.Icon({name:"Groups",size:22,tint:"onSurfaceVariant",contentDescription:__values[0]}); }
-function __operitUiTemplate_84331(__ctx,__values){return __ctx.UI.Box({width:28,height:28,contentAlignment:"center"},__values[0]); }
-function __operitUiTemplate_85388(__ctx,__values){return __ctx.UI.Text({text:__values[0],style:"bodySmall",maxLines:1,overflow:"ellipsis",color:__values[1],fontWeight:__values[2]}); }
-function __operitUiTemplate_85578(__ctx,__values){return __ctx.UI.Text({text:__values[0],style:"labelSmall",maxLines:1,overflow:"ellipsis",color:__values[1]}); }
-function __operitUiTemplate_85321(__ctx,__values){return __ctx.UI.Column({weight:1,horizontalAlignment:"start"},__values[0]); }
-function __operitUiTemplate_85792(__ctx,__values){return __ctx.UI.CircularProgressIndicator({width:16,height:16,strokeWidth:2}); }
-function __operitUiTemplate_85870(__ctx,__values){return __ctx.UI.Icon({name:__values[0],size:__values[1],tint:__values[2],contentDescription:__values[3]}); }
-function __operitUiTemplate_85714(__ctx,__values){return __ctx.UI.Box({width:20,height:20,contentAlignment:"center"},__values[0]); }
-function __operitUiTemplate_86141(__ctx,__values){return __ctx.UI.Row(__values[0],__values[1]); }
-function __operitUiTemplate_86179(__ctx,__values){return __ctx.UI.Row(__values[0],__values[1]); }
-function __operitUiTemplate_86911(__ctx,__values){return __ctx.UI.Text({text:__values[0],style:"titleSmall",fontWeight:"700",weight:1}); }
-function __operitUiTemplate_87027(__ctx,__values){return __ctx.UI.Text({text:__values[0],style:"labelSmall",color:__values[1]}); }
-function __operitUiTemplate_87142(__ctx,__values){return __ctx.UI.Spacer({width:2}); }
-function __operitUiTemplate_87501(__ctx,__values){return __ctx.UI.Icon({name:"Close",size:18,contentDescription:"\u5173\u95ED"}); }
-function __operitUiTemplate_87176(__ctx,__values){return __ctx.UI.IconButton({key:"selector-close",enabled:__values[0],width:32,height:32,onClick:__values[1]},__values[2]); }
-function __operitUiTemplate_86775(__ctx,__values){return __ctx.UI.Row({fillMaxWidth:true,paddingStart:16,paddingTop:8,paddingEnd:8,paddingBottom:4,verticalAlignment:"center"},__values[0]); }
-function __operitUiTemplate_87699(__ctx,__values){return __ctx.UI.CircularProgressIndicator({width:20,height:20,strokeWidth:2}); }
-function __operitUiTemplate_87625(__ctx,__values){return __ctx.UI.Box({weight:1,fillMaxWidth:true,contentAlignment:"center"},__values[0]); }
-function __operitUiTemplate_87816(__ctx,__values){return __ctx.UI.Text({key:"selector-load-error",text:__values[0],color:__values[1],paddingHorizontal:16,paddingVertical:18,weight:1}); }
-function __operitUiTemplate_88007(__ctx,__values){return __ctx.UI.Text({text:__values[0],style:"bodySmall",color:__values[1],paddingStart:16,paddingTop:18,paddingEnd:16,paddingBottom:20,weight:1}); }
-function __operitUiTemplate_88730(__ctx,__values){return __ctx.UI.HorizontalDivider({thickness:1,color:__values[0]}); }
-function __operitUiTemplate_88537(__ctx,__values){return __ctx.UI.Column({key:__values[0],fillMaxWidth:true},__values[1]); }
-function __operitUiTemplate_88853(__ctx,__values){return __ctx.UI.LazyColumn(__values[0]); }
-function __operitUiTemplate_89836(__ctx,__values){return __ctx.UI.HorizontalDivider({thickness:1}); }
-function __operitUiTemplate_89947(__ctx,__values){return __ctx.UI.Text({key:"selector-commit-error",text:__values[0],color:__values[1],style:"bodySmall",paddingHorizontal:16,paddingVertical:8}); }
-function __operitUiTemplate_89671(__ctx,__values){return __ctx.UI.Column({fillMaxWidth:true,height:420,modifier:__values[0]},__values[1]); }
-function __operitUiTemplate_89020(__ctx,__values){return __ctx.UI.Dialog({key:"character-selection",containerColor:"surfaceContainerHigh",shape:{cornerRadius:28},closeOnDismissRequest:false,properties:{usePlatformDefaultWidth:false,dismissOnBackPress:__values[0],dismissOnClickOutside:__values[1]},onLoad:__values[2],onDismissRequest:__values[3]},__values[4]); }

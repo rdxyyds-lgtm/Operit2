@@ -48,6 +48,9 @@ pub struct ChatCreateOptions {
     /// Identifies an explicitly selected existing source conversation for creation hooks.
     #[serde(default, skip_serializing_if = "JsOptional::is_undefined")]
     pub sourceChatId: JsOptional<String>,
+    /// Places the new conversation beneath an existing parent without cloning its history.
+    #[serde(default, skip_serializing_if = "JsOptional::is_undefined")]
+    pub parentChatId: JsOptional<String>,
     /// Supplies opaque creation input interpreted solely by registered plugins.
     #[serde(default, skip_serializing_if = "JsOptional::is_undefined")]
     pub input: JsOptional<JsonObject>,
@@ -207,6 +210,18 @@ pub enum ChatInitialTurn {
     Execute { participantId: Option<String> },
 }
 
+/// Controls summary scheduling for an explicitly continued user turn.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ChatSummaryPolicy {
+    /// Keeps the continued reply outside automatic summary scheduling.
+    #[serde(rename = "defer")]
+    Defer,
+    /// Checks configured summary thresholds after this reply has actually completed.
+    #[serde(rename = "after_reply")]
+    AfterReply,
+}
+
 /// Sends original input once or generates a reply to an explicitly identified persisted user message.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
@@ -227,6 +242,7 @@ pub enum ChatSendRequest {
         userMessageTimestamp: i64,
         participantId: String,
         notifyReply: bool,
+        summaryPolicy: ChatSummaryPolicy,
     },
 }
 
@@ -373,6 +389,8 @@ pub trait ChatHost: Send + Sync {
     fn updatePinned(&self, chatId: String, pinned: bool) -> JsFuture<String>;
     /// Updates only the deletion lock of an existing canonical chat.
     fn updateLocked(&self, chatId: String, locked: bool) -> JsFuture<String>;
+    /// Clears the parent relationship while preserving the conversation and its children.
+    fn promoteToRoot(&self, chatId: String) -> JsFuture<String>;
     /// Persists the supplied unique existing chat identifiers in display order.
     fn reorder(&self, chatIds: Vec<String>) -> JsFuture<String>;
     ///
@@ -495,8 +513,26 @@ pub struct ChatSendMessageOptions {
 }
 #[cfg(test)]
 mod chat_extension_contract_tests {
-    use super::{ChatCreateOptions, ChatExtensionTarget, JsOptional, JsonObject};
+    use super::{ChatCreateOptions, ChatExtensionTarget, ChatSendRequest, ChatSummaryPolicy, JsOptional, JsonObject};
     use serde_json::json;
+
+    /// Requires an explicit summary policy on every continuation and preserves both supported wire values.
+    #[test]
+    fn continuation_requires_explicit_summary_policy() {
+        let base = json!({"kind":"continue","chatId":"chat","runtime":"main",
+            "userMessageTimestamp":10,"participantId":"speaker","notifyReply":false});
+        assert!(serde_json::from_value::<ChatSendRequest>(base.clone()).is_err());
+        for (wire, expected) in [("defer", ChatSummaryPolicy::Defer), ("after_reply", ChatSummaryPolicy::AfterReply)] {
+            let mut raw = base.clone();
+            raw["summaryPolicy"] = json!(wire);
+            let parsed: ChatSendRequest = serde_json::from_value(raw.clone()).unwrap();
+            assert!(matches!(&parsed, ChatSendRequest::Continue { summaryPolicy, .. } if *summaryPolicy == expected));
+            assert_eq!(serde_json::to_value(parsed).unwrap(), raw);
+        }
+        let mut raw = base;
+        raw["summaryPolicy"] = json!("automatic");
+        assert!(serde_json::from_value::<ChatSendRequest>(raw).is_err());
+    }
 
     /// Accepts only existing-record targets with an explicit zero-based message revision identity.
     #[test]

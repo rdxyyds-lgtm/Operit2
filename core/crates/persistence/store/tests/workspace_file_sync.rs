@@ -1,8 +1,10 @@
-use operit_host_api::RuntimeStorageHost;
+use operit_host_api::{HostResult, RuntimeStorageEntry, RuntimeStorageHost};
 use operit_host_native_storage::NativeRuntimeStorageHost;
 use operit_store::RuntimeFileSyncStore::{RuntimeFileSyncStore, RUNTIME_FILE_SYNC_DOMAIN};
 use operit_store::SyncOperationStore::{SyncClock, SyncOperation, SyncOperationStore};
 use operit_store::WorkspaceFileSyncStore::WorkspaceFileSyncStore;
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 const SYNC: &str = "runtime/sync";
@@ -72,8 +74,10 @@ fn bidirectional_binary_empty_and_no_echo() {
     a.write("workspaces/project/中文.txt", b"hello");
     a.write("workspaces/project/image.bin", &[0, 255, 17, 32]);
     a.write("workspaces/project/empty.txt", b"");
+    a.host.setModifiedAt("workspaces/project/image.bin", 1_800_000_000_123_456).unwrap();
     assert_eq!(a.workspace().scan().unwrap(), 3);
     a.send(&b);
+    assert_eq!(a.host.modifiedAt("workspaces/project/image.bin").unwrap(), b.host.modifiedAt("workspaces/project/image.bin").unwrap());
     assert_eq!(
         b.host.readBytes("workspaces/project/image.bin").unwrap(),
         [0, 255, 17, 32]
@@ -81,12 +85,12 @@ fn bidirectional_binary_empty_and_no_echo() {
     assert_eq!(b.workspace().scan().unwrap(), 0);
     assert_eq!(b.ops().len(), 3);
     std::thread::sleep(std::time::Duration::from_millis(2));
-    b.write("workspaces/project/中文.txt", b"phone");
+    b.write("workspaces/project/中文.txt", b"phones");
     b.workspace().scan().unwrap();
     b.send(&a);
     assert_eq!(
         a.host.readBytes("workspaces/project/中文.txt").unwrap(),
-        b"phone"
+        b"phones"
     );
     assert_eq!(a.workspace().scan().unwrap(), 0);
     assert_eq!(a.ops().len(), 4);
@@ -321,5 +325,155 @@ fn file_to_directory_and_back_replicate_in_order() {
     assert_eq!(
         b.host.readBytes("workspaces/project/item").unwrap(),
         b"file again"
+    );
+}
+
+/// Counts workspace file reads so tests can assert what a scan actually read.
+struct CountingHost {
+    inner: Arc<NativeRuntimeStorageHost>,
+    workspaceReads: AtomicUsize,
+}
+
+impl RuntimeStorageHost for CountingHost {
+    fn openTransactionDatabase(&self, path: &str) -> HostResult<Box<dyn operit_host_api::RuntimeSqliteConnection>> {
+        self.inner.openTransactionDatabase(path)
+    }
+
+    fn runtimeRootDir(&self) -> Option<PathBuf> {
+        self.inner.runtimeRootDir()
+    }
+    fn workspaceRootDir(&self) -> Option<PathBuf> {
+        self.inner.workspaceRootDir()
+    }
+    fn readBytes(&self, path: &str) -> HostResult<Vec<u8>> {
+        if path.starts_with("workspaces/") {
+            self.workspaceReads.fetch_add(1, Ordering::SeqCst);
+        }
+        self.inner.readBytes(path)
+    }
+    fn readBytesRange(&self, path: &str, offset: u64, length: usize) -> HostResult<Vec<u8>> {
+        self.inner.readBytesRange(path, offset, length)
+    }
+    fn writeBytes(&self, path: &str, content: &[u8]) -> HostResult<()> {
+        self.inner.writeBytes(path, content)
+    }
+    /// Reads metadata without counting a content read.
+    fn modifiedAt(&self, path: &str) -> HostResult<i64> { self.inner.modifiedAt(path) }
+    /// Preserves source metadata.
+    fn setModifiedAt(&self, path: &str, time: i64) -> HostResult<()> { self.inner.setModifiedAt(path, time) }
+    fn writeBytesAtomically(&self, path: &str, content: &[u8]) -> HostResult<()> {
+        self.inner.writeBytesAtomically(path, content)
+    }
+    fn appendBytes(&self, path: &str, content: &[u8]) -> HostResult<()> {
+        self.inner.appendBytes(path, content)
+    }
+    fn flushFile(&self, path: &str) -> HostResult<()> {
+        self.inner.flushFile(path)
+    }
+    fn delete(&self, path: &str, recursive: bool) -> HostResult<()> {
+        self.inner.delete(path, recursive)
+    }
+    fn exists(&self, path: &str) -> HostResult<bool> {
+        self.inner.exists(path)
+    }
+    fn list(&self, prefix: &str) -> HostResult<Vec<RuntimeStorageEntry>> {
+        self.inner.list(prefix)
+    }
+}
+
+struct CountedNode {
+    host: Arc<CountingHost>,
+    _node: Node,
+}
+
+impl CountedNode {
+    /// Reuses the native node fixture while instrumenting only workspace content reads.
+    fn new() -> Self {
+        let node = Node::new();
+        let host = Arc::new(CountingHost { inner: node.host.clone(), workspaceReads: AtomicUsize::new(0) });
+        Self { host, _node: node }
+    }
+    fn workspace(&self) -> WorkspaceFileSyncStore {
+        WorkspaceFileSyncStore::new(self.host.clone(), SYNC)
+    }
+    fn reads(&self) -> usize {
+        self.host.workspaceReads.load(Ordering::SeqCst)
+    }
+
+}
+
+#[test]
+fn size_unchanged_scans_reuse_references_without_reading() {
+    let node = CountedNode::new();
+    node.host
+        .writeBytes("workspaces/project/file.txt", b"content")
+        .unwrap();
+    assert_eq!(node.workspace().scan().unwrap(), 1); // initial inventory round
+    let baseline = node.reads();
+    assert_eq!(node.workspace().scan().unwrap(), 0);
+    assert_eq!(node.reads(), baseline); // steady state: no reads, no hashing
+}
+
+#[test]
+fn size_change_triggers_exactly_one_read() {
+    let node = CountedNode::new();
+    node.host
+        .writeBytes("workspaces/project/file.txt", b"v1")
+        .unwrap();
+    node.workspace().scan().unwrap();
+    let time = node.host.modifiedAt("workspaces/project/file.txt").unwrap();
+    node.host
+        .writeBytes("workspaces/project/file.txt", b"version two")
+        .unwrap();
+    node.host.setModifiedAt("workspaces/project/file.txt", time).unwrap();
+    let baseline = node.reads();
+    assert_eq!(node.workspace().scan().unwrap(), 1);
+    assert_eq!(node.reads() - baseline, 1);
+}
+
+/// Same-size external edits are detected on the next metadata scan.
+#[test]
+fn same_size_external_edit_is_published_once() {
+    let node = CountedNode::new();
+    let path = "workspaces/project/file.txt";
+    node.host.writeBytes(path, b"hello").unwrap();
+    node.workspace().scan().unwrap();
+    let time = node.host.modifiedAt(path).unwrap();
+    node.host.writeBytes(path, b"world").unwrap();
+    node.host.setModifiedAt(path, time + 10).unwrap();
+    let reads = node.reads();
+    assert_eq!(node.workspace().scan().unwrap(), 1);
+    assert_eq!(node.reads() - reads, 1);
+    assert_eq!(node.workspace().scan().unwrap(), 0);
+}
+
+/// Retaining both metadata fields declares equality under the file contract.
+#[test]
+fn equal_time_and_size_do_not_read_or_hash_contents() {
+    let node = CountedNode::new();
+    let path = "workspaces/project/file.txt";
+    node.host.writeBytes(path, b"hello").unwrap();
+    node.workspace().scan().unwrap();
+    let time = node.host.modifiedAt(path).unwrap();
+    node.host.writeBytes(path, b"world").unwrap();
+    node.host.setModifiedAt(path, time).unwrap();
+    let reads = node.reads();
+    assert_eq!(node.workspace().scan().unwrap(), 0);
+    assert_eq!(node.reads(), reads);
+}
+
+#[test]
+fn structured_same_size_writes_publish_immediately() {
+    let a = Node::new();
+    let b = Node::new();
+    a.write("workspaces/project/file.txt", b"hello");
+    a.workspace().scan().unwrap();
+    RuntimeFileSyncStore::new(a.host.clone(), SYNC)
+        .writeBytes("workspaces/project/file.txt", b"world")
+        .unwrap();
+    a.send(&b);
+    assert_eq!(
+        b.host.readBytes("workspaces/project/file.txt").unwrap(),
+        b"world"
     );
 }

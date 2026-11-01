@@ -9,6 +9,9 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get chatPromoteToRoot => 'Promote to main conversation';
+
+  @override
   String get workspaceUnsavedChangesTitle => 'Unsaved changes';
 
   @override
@@ -107,6 +110,37 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatQueueAdded => 'Added to queue';
 
   @override
+  String get chatSendOptions => 'Choose how to send';
+
+  @override
+  String get chatQueueAddMessageDescription =>
+      'Send after the current reply finishes (default)';
+
+  @override
+  String get chatGuideCurrentTurn => 'Guide current conversation';
+
+  @override
+  String get chatGuideCurrentTurnDescription =>
+      'Apply in a later model request without interrupting this turn';
+
+  @override
+  String get chatInterruptAndSend => 'Interrupt and send';
+
+  @override
+  String get chatInterruptAndSendDescription =>
+      'Stop the current reply and send this message now';
+
+  @override
+  String get chatGuidanceAccepted => 'Guidance added for a later model request';
+
+  @override
+  String get chatGuidanceTextOnly =>
+      'Guidance supports text only. Remove attachments and the reply target first.';
+
+  @override
+  String get chatQueueWithdrawToEditor => 'Withdraw to editor';
+
+  @override
   String get chatPleaseCreateNewChat => 'Please create a chat';
 
   @override
@@ -177,6 +211,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get close => 'Close';
+
+  @override
+  String get workspaceCloseOtherTabs => 'Close Others';
+
+  @override
+  String get workspaceCloseTabsToRight => 'Close to the Right';
+
+  @override
+  String get workspaceCloseAllTabs => 'Close All';
 
   @override
   String get commonExpand => 'Expand';
@@ -280,6 +323,35 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get messageLocatorSearchMessages => 'Search messages';
+
+  @override
+  String get messageLocatorViewFavorites => 'View favorites';
+
+  @override
+  String get messageLocatorAll => 'All';
+
+  @override
+  String get messageLocatorFavorites => 'Favorites';
+
+  @override
+  String get messageLocatorNoFavorites => 'No favorite messages yet';
+
+  @override
+  String get messageLocatorLoadFailed =>
+      'Could not load messages. Please try again.';
+
+  @override
+  String get messageLocatorFavoriteFailed =>
+      'Could not update favorite. Please try again.';
+
+  @override
+  String get messageLocatorAddFavorite => 'Favorite message';
+
+  @override
+  String get messageLocatorRemoveFavorite => 'Remove favorite';
+
+  @override
   String get messageLocatorNoMatches => 'No matching messages';
 
   @override
@@ -380,7 +452,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Choose the default workspace type to create';
 
   @override
-  String get workspaceUnbindTitle => 'Unbind workspace';
+  String get workspaceUnbindTitle => 'Remove project from this chat';
 
   @override
   String get workspaceUnbindDescription =>
@@ -915,7 +987,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsCategoryLocalModelsSubtitle =>
-      'Downloads, engines, STT / TTS';
+      'LLMs, downloads, STT / TTS';
 
   @override
   String get settingsCategoryLocalModelsDescription =>
@@ -1413,9 +1485,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsModelProviderTypeSiliconflow => 'SiliconFlow';
 
   @override
-  String get settingsModelProviderTypeIflow => 'iFlow';
-
-  @override
   String get settingsModelProviderTypeOpenrouter => 'OpenRouter';
 
   @override
@@ -1460,6 +1529,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String localModelsOperationFailed(Object error) {
     return 'Local model operation failed: $error';
   }
+
+  @override
+  String get localModelsAddModel => 'Add model';
+
+  @override
+  String get localModelsFilterDownloads => 'Downloads';
+
+  @override
+  String get localModelsAllTypes => 'All types';
+
+  @override
+  String get localModelsNoMatches => 'No matching models';
+
+  @override
+  String get localModelsResetFilters => 'Reset filters';
+
+  @override
+  String get localModelsDetails => 'Model details';
+
+  @override
+  String get localModelsMoreActions => 'More actions';
+
+  @override
+  String localModelsResultCount(int count, int total) {
+    return 'Showing $count of $total models';
+  }
+
+  @override
+  String get localModelsHubRepositoryTab => 'Repository';
+
+  @override
+  String get localModelsDownloadFailed => 'Download failed';
+
+  @override
+  String get localModelsDownloadPausedLabel => 'Paused';
 
   @override
   String get localModelsCatalog => 'Model catalog';
@@ -2220,6 +2324,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsRuntimeRenameSpace => 'Rename device space';
 
   @override
+  String get settingsRuntimeResetTransactions => 'Reset transactions';
+
+  @override
+  String get settingsRuntimeResetTransactionsDone =>
+      'Sync transactions rebuilt from this device’s current content';
+
+  @override
   String get settingsRuntimeLeaveSpace => 'Leave device space';
 
   @override
@@ -2747,7 +2858,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAppearanceChatDisplaySection => 'Chat display';
 
   @override
-  String get settingsAppearanceMessageStyle => 'Message style';
+  String get settingsAppearanceUserMessageStyle => 'User message style';
+
+  @override
+  String get settingsAppearanceAiMessageStyle => 'AI message style';
 
   @override
   String get settingsAppearanceMessageStyleClean => 'Command';
@@ -3101,7 +3215,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsDataOpenDetailedStatsDescription =>
-      'Open daily trends, input/output token changes, heatmap intensity, and usage breakdown by provider, model, and function model.';
+      'View the usage heatmap and model usage timeline with minute-level zoom.';
 
   @override
   String get settingsDataRefreshTokenStats => 'Refresh statistics';
@@ -3843,13 +3957,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsPeerPortModeHelp =>
-      'Fixed mode keeps the entered IP and port for tunnels and port forwarding. A busy fixed port reports an error without changing the address.';
+      'By default, the system assigns an available port and LAN discovery advertises it. Fixed mode uses the entered listen address and port and reports an error if the port is busy.';
 
   @override
   String get settingsPeerPortMode => 'Port allocation';
 
   @override
-  String get settingsPeerPortModeFixed => 'Fixed address and port';
+  String get settingsPeerPortModeFixed => 'Fixed listen address and port';
 
   @override
   String get settingsPeerPortModeAutomatic => 'Automatic port';
@@ -3868,7 +3982,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsPeerTransportHelp =>
-      'Listener transports (multiple selections). HTTP and WebSocket can share a port; TCP cannot share that port with them. Bluetooth requires platform support. Clear all selections and disable discovery to stop listening. Changing settings interrupts existing connections. Disabling discovery alone does not stop direct connections.';
+      'Listener transports (multiple selections). HTTP, WebSocket and TCP share one listening port and can be combined freely. Bluetooth requires platform support. Clear all selections and disable discovery to stop listening. Changing settings interrupts existing connections. Disabling discovery alone does not stop direct connections.';
 
   @override
   String get settingsPeerBindAddress => 'Listen IP address';
@@ -3886,15 +4000,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsPeerBindPortAutomaticHelp =>
-      'Automatic mode selects a free port starting from this value.';
+      'The system assigns an available port. The actual port appears after startup.';
 
   @override
   String get settingsPeerDiscoveryNeedsTransport =>
       'Select at least one transport before enabling discovery.';
-
-  @override
-  String get settingsPeerPortConflict =>
-      'TCP cannot currently share a listen port with HTTP/WebSocket. Select TCP or HTTP/WebSocket.';
 
   @override
   String get settingsPeerAddressRequired => 'Enter a listen IP address.';
@@ -4050,7 +4160,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get deviceSpaceUpdateEndpointHint =>
-      'For example ws://192.168.1.20:37195/link';
+      'e.g. ws://host:port/link or host:port — use the peer\'s current listen port';
 
   @override
   String get deviceSpaceUpdateEndpointSaved => 'Direct address updated';
@@ -4074,6 +4184,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get devicePickerNearby => 'Nearby devices';
+
+  @override
+  String devicePickerDiscoveryFailed(String error) {
+    return 'Nearby device discovery failed: $error';
+  }
 
   @override
   String get devicePickerEmpty => 'No nearby devices found';
@@ -4258,4 +4373,357 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get backgroundWorkStop => 'Stop';
+
+  @override
+  String get localModelsDeviceOnly => 'Stored on this device';
+
+  @override
+  String get localModelsDeviceOnlyDescription =>
+      'Weights, download progress and installation records stay on this device and are excluded from Space sync. Chats can route inference to the device with the model.';
+
+  @override
+  String get localModelsRunChat => 'Run and configure';
+
+  @override
+  String get localModelsUseForChat => 'Use for chat';
+
+  @override
+  String get localModelsChatActivated => 'Selected as the chat model';
+
+  @override
+  String get localModelsPrompt => 'Enter a prompt';
+
+  @override
+  String get localModelsGenerate => 'Generate';
+
+  @override
+  String get localModelsGenerating => 'Generating…';
+
+  @override
+  String get localModelsThreads => 'CPU threads';
+
+  @override
+  String get localModelsContextSize => 'Context size (tokens)';
+
+  @override
+  String get localModelsBatchSize => 'Batch size';
+
+  @override
+  String get localModelsUnload => 'Unload model';
+
+  @override
+  String get localModelsCpuBackend => 'On-device CPU inference';
+
+  @override
+  String get localModelsLlmDescription =>
+      'Download a GGUF model for llama.cpp or an MNN model bundle. After installation, try it here or select it for chat.';
+
+  @override
+  String get localModelsInvalidSettings =>
+      'Check the thread count, context size and batch size.';
+
+  @override
+  String get localModelsFilterAll => 'All models';
+
+  @override
+  String get localModelsFilterInstalled => 'Installed only';
+
+  @override
+  String get localModelsSearchCatalog => 'Search models, tags or engines';
+
+  @override
+  String get deviceSpaceSyncPeer => 'a space device';
+
+  @override
+  String deviceSpaceSyncActive(String device) {
+    return 'Syncing with $device';
+  }
+
+  @override
+  String deviceSpaceSyncCompleted(String device) {
+    return 'Synced with $device';
+  }
+
+  @override
+  String get deviceSpaceSyncChecking => 'Checking for changes';
+
+  @override
+  String get deviceSpaceSyncRecords => 'Exchanging records';
+
+  @override
+  String deviceSpaceSyncRecordProgress(int completed, int total, int percent) {
+    return '$completed / $total records · $percent%';
+  }
+
+  @override
+  String deviceSpaceSyncPendingCount(int count) {
+    return '$count records pending application';
+  }
+
+  @override
+  String deviceSpaceSyncCounting(int count) {
+    return 'Counting total · $count records processed';
+  }
+
+  @override
+  String get deviceSpaceSyncFiles => 'Transferring and verifying files';
+
+  @override
+  String get deviceSpaceSyncRetrying =>
+      'Sync interrupted. Retrying automatically.';
+
+  @override
+  String get deviceSpaceSyncPending =>
+      'Some data is still pending. Retrying automatically.';
+
+  @override
+  String deviceSpaceSyncCurrentFile(String done, String total) {
+    return 'Current file: $done / $total';
+  }
+
+  @override
+  String deviceSpaceSyncTransferred(int count, String bytes) {
+    return '$count records exchanged · $bytes transferred';
+  }
+
+  @override
+  String get deviceSpaceSyncBackground =>
+      'You can keep using the app while syncing continues.';
+
+  @override
+  String get runtimeActivityTitle => 'Background tasks';
+
+  @override
+  String get runtimeActivitySyncing => 'Syncing';
+
+  @override
+  String get runtimeActivitySyncCompleted => 'Sync complete';
+
+  @override
+  String get runtimeActivityWaiting => 'Waiting to retry';
+
+  @override
+  String get runtimeActivityExpand => 'Show background tasks';
+
+  @override
+  String get runtimeActivityLoadingPackages => 'Loading extensions';
+
+  @override
+  String get peerQrTitle => 'QR connection';
+
+  @override
+  String get peerQrScan => 'Scan code';
+
+  @override
+  String get peerQrShow => 'My code';
+
+  @override
+  String get peerQrShowHint =>
+      'Scan this code on another device to connect to this device.';
+
+  @override
+  String get peerQrScanHint =>
+      'Scan the Operit connection code on the other device.';
+
+  @override
+  String get peerQrTrustHint =>
+      'This QR code is valid for 5 minutes. Share it only with trusted devices. Confirming joins directly; this device automatically approves when it has administrator approval permissions.';
+
+  @override
+  String get peerQrConfirmJoin => 'Confirm join';
+
+  @override
+  String get peerQrConfirmJoinHint =>
+      'Join this device’s space? Confirm to connect and submit the join request without entering a pairing code.';
+
+  @override
+  String get peerQrListenerRequired =>
+      'Enable receiving connections in connection settings and connect to a network first.';
+
+  @override
+  String get peerQrCopy => 'Copy connection info';
+
+  @override
+  String get peerQrCopied => 'Copied';
+
+  @override
+  String get peerQrImport => 'Import QR image';
+
+  @override
+  String get peerQrPaste => 'Or paste connection info';
+
+  @override
+  String get peerQrRead => 'Read connection info';
+
+  @override
+  String get peerQrWrongDevice =>
+      'This code belongs to a different device. Scan the code for the selected device.';
+
+  @override
+  String get peerQrImageInvalid =>
+      'No QR code could be read. Choose a clear QR image smaller than 16 MB.';
+
+  @override
+  String get peerQrCameraUnavailable =>
+      'Camera scanning is unavailable. Import a QR image or paste connection info instead.';
+
+  @override
+  String get peerQrCameraPermission =>
+      'Camera access is required. Allow it in system settings, or import a QR image.';
+
+  @override
+  String get peerQrDevice => 'Connect device';
+
+  @override
+  String get peerQrScanAgain => 'Scan another code';
+
+  @override
+  String get peerQrMethodsHint =>
+      'Can’t find the device? Connect with a QR code.';
+
+  @override
+  String get toolParametersLabel => 'Parameters';
+
+  @override
+  String get toolResultLabel => 'Result';
+
+  @override
+  String toolGroupThinkingCount(int count) {
+    return '$count thinking';
+  }
+
+  @override
+  String toolGroupCallCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count calls',
+      one: '$count call',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String toolGroupSearchCount(int count) {
+    return '$count search';
+  }
+
+  @override
+  String toolEditedFileCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Edited $count files',
+      one: 'Edited $count file',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get toolViewChanges => 'View changes';
+
+  @override
+  String toolViewFileDiff(String fileName) {
+    return 'View diff for $fileName';
+  }
+
+  @override
+  String get toolGroupCompleted => 'Completed';
+
+  @override
+  String get toolGroupExecuting => 'Executing';
+
+  @override
+  String get settingsDataTimelineTitle => 'Model usage over time';
+
+  @override
+  String get settingsDataTimelineHint =>
+      'One line per model. Pinch or scroll to zoom, drag to move, and tap to inspect a time bucket.';
+
+  @override
+  String settingsDataTimelineHours(int hours) {
+    return '${hours}h';
+  }
+
+  @override
+  String settingsDataTimelineBucket(int minutes) {
+    return '$minutes min buckets';
+  }
+
+  @override
+  String settingsDataTimelineSecondsBucket(int seconds) {
+    return '$seconds sec buckets';
+  }
+
+  @override
+  String get settingsDataTimelineEarlier => 'Earlier';
+
+  @override
+  String get settingsDataTimelineLater => 'Later';
+
+  @override
+  String get settingsDataTimelineRecent => 'Recent 3h';
+
+  @override
+  String get settingsDataTimelineRange => 'Visible time range';
+
+  @override
+  String get settingsDataTimelineSelectModel =>
+      'Select a model below to display its usage';
+
+  @override
+  String get settingsDataTimelineSpend => 'Spending (estimated)';
+
+  @override
+  String get settingsDataTimelineCacheRate => 'Cache hit rate';
+
+  @override
+  String get settingsDataTimelineSpendHint =>
+      'Estimated using current model prices. Shares the time range above.';
+
+  @override
+  String get settingsDataTimelineCacheRateHint =>
+      'Cached input / total input per time bucket. Idle periods have no rate.';
+
+  @override
+  String get settingsDataTimelineNoPrices => 'No matching model prices';
+
+  @override
+  String get settingsDataTimelinePricesFailed =>
+      'Could not load model prices. Refresh to retry.';
+
+  @override
+  String settingsDataTimelineUnpriced(int count) {
+    return '$count requests have unknown cost';
+  }
+
+  @override
+  String get settingsDataTimelineKnownSpend => 'Known spending (estimated)';
+
+  @override
+  String get settingsDataDetailedStatsRangeLastDay => 'Last 24 hours';
+
+  @override
+  String get settingsDataTimelineAverageInput => 'Average input per request';
+
+  @override
+  String get settingsDataTimelineAverageInputHint =>
+      'Input tokens / requests per bucket, to spot growing context sizes. Idle periods are gaps.';
+
+  @override
+  String get settingsDataTimelineCacheSavings => 'Cache savings (estimated)';
+
+  @override
+  String get settingsDataTimelineCacheSavingsHint =>
+      'At current prices, cached input cost compared with regular input. Per-request billing saves 0; negative values mean a cache surcharge.';
+
+  @override
+  String settingsDataTimelineTokensPerRequest(String tokens) {
+    return '$tokens tokens / request';
+  }
+
+  @override
+  String settingsDataTimelineUnknownSavings(int count) {
+    return 'Savings unknown for $count requests';
+  }
 }
